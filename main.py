@@ -66,7 +66,7 @@ async def block_view(request: Request, hash_or_height: str):
             h_hash = hash_or_height
         block = await rpc.call("getblock", [h_hash, 1])
     except Exception as e:
-        raise HTTPException(status_code=404, detail=f"block not found: {e}")
+        raise HTTPException(status_code=404, detail="block not found")
     try:
         finality = await rpc.call("get_tfl_block_finality_from_hash", [h_hash])
     except Exception:
@@ -83,7 +83,7 @@ async def tx_view(request: Request, txid: str):
     try:
         tx = await rpc.call("getrawtransaction", [txid, 1])
     except Exception as e:
-        raise HTTPException(status_code=404, detail=f"tx not found: {e}")
+        raise HTTPException(status_code=404, detail="transaction not found")
     try:
         finality = await rpc.call("get_tfl_tx_finality_from_hash", [txid])
     except Exception:
@@ -101,7 +101,7 @@ async def address_view(request: Request, addr: str):
     try:
         balance = await rpc.call("getaddressbalance", [{"addresses": [addr]}])
     except Exception as e:
-        raise HTTPException(status_code=404, detail=f"address lookup failed: {e}")
+        raise HTTPException(status_code=400, detail="invalid address")
     try:
         txids = await rpc.call("getaddresstxids", [{"addresses": [addr]}]) or []
     except Exception:
@@ -155,4 +155,4 @@ async def health():
         info = await rpc.call("getinfo")
         return {"ok": True, "tip": info.get("blocks"), "connections": info.get("connections")}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        return {"ok": False}
