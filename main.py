@@ -461,6 +461,11 @@ async def api_pool(pool_id: str):
     }
 
 
+@app.get('/why')
+async def why_view(request: Request):
+    return templates.TemplateResponse(request, 'why.html', {'request': request})
+
+
 @app.get('/params')
 async def params_view(request: Request):
     info, chaininfo, final_hh, roster = await asyncio.gather(

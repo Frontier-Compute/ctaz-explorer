@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}why this exists{% endblock %}
+{% block content %}
+<h2>why this exists</h2>
+
+<p>on 2026-04-15, the crosslink season 1 feature net went public with a workshop and a signal group. someone in the group said "someone should make an explorer". an explorer went live on this domain the same afternoon, running on a small vps, systemd supervised, tls via let's encrypt, no analytics, no cookies, no external fetches, mit licensed. this page explains what it is, how it was built, and what to check if trust is supposed to be optional.</p>
+
+<h3>what this is not</h3>
+
+<p>this is not a product. there is no account, no login, no payment wall, no rate limit, no api key, no referral program, no javascript bundle, no cross origin beacon, no captcha. there is a fastapi process behind nginx. the source is 500 lines of python plus a few jinja templates. it is small on purpose.</p>
+
+<h3>what the node is doing</h3>
+
+<p>under the hood is a local build of crosslink_monolith from the speculative branch, tracking the ctaz feature net, rpc on 127.0.0.1:18232, rewired from the default 8232 because port 8232 was already taken by an unrelated docker zebra on the same box. the explorer does not mine, does not sign, does not custody. it reads. reads are cheap, so the explorer is cheap.</p>
+
+<h3>what the explorer shows that others do not</h3>
+
+<ul>
+<li><strong>finality badges</strong>: every block and every transaction is tagged bft-finalized or pow-only based on <code>get_tfl_block_finality_from_hash</code>. the finality gap between pow tip and bft tip is always visible on the home page. the gap is almost always large. that is an honest signal about where s1 tfl currently lives.</li>
+<li><strong>per-block pool deltas</strong>: the transparent, orchard, sapling, sprout, and lockbox pools each show their delta on the block page. the <a href='/pool/orchard'>pool pages</a> render a server-side svg sparkline of cumulative value over the last 200 blocks. no other explorer on crosslink shows per-block pool flow, not because it is hard but because nobody has written it yet.</li>
+<li><strong>attestation registries</strong>: <a href='/anchors'>/anchors</a> lists zap1 attestation anchors on ctaz. <a href='/vaults'>/vaults</a> lists shieldedvault custody agents. <a href='/events'>/events</a> lists zeven watcher events. the registries are public json files in the repo, the explorer reads them at request time, and matches against the requested txid to render an attestation card on the transaction page. if a txid is not in a registry, nothing special happens. the registries on ctaz start empty and populate as real cTAZ transactions land. none of this is asserted by the explorer; everything is verifiable against the chain directly.</li>
+<li><strong>/verify</strong>: paste a txid at <a href='/verify'>/verify</a>, get back block, finality, pool usage, and registry matches in one shot. curl friendly via <code>/api/verify/&lt;txid&gt;</code>. no auth, no rate limit.</li>
+<li><strong>/params</strong>: honest protocol parameters from the node, including the parameters that are still stub surfaces in the s1 monolith. the <code>staking_command</code> rpc returns <code>NotImplemented</code>; the real staking path lives at <code>wallet/src/lib.rs:1923</code> in <code>stake_orchard_to_finalizer</code>. finalizer commission is zero in s1. this page marks both honestly.</li>
+</ul>
+
+<h3>how to verify any claim above</h3>
+
+<ul>
+<li>every block and tx link on this explorer points back to raw chain state. if the explorer says "block 460 is finalized, gap 1400+", run <code>get_tfl_block_finality_from_hash</code> against any crosslink node and confirm.</li>
+<li>every pool value comes from zebra's <code>valuePools</code> array on <code>getblock</code>. no derived math.</li>
+<li>the <a href='/api/tip'>/api/tip</a>, <a href='/api/params'>/api/params</a>, <a href='/api/finalizers'>/api/finalizers</a>, <a href='/api/pool/orchard'>/api/pool/orchard</a>, <a href='/api/anchors'>/api/anchors</a>, <a href='/api/vaults'>/api/vaults</a>, <a href='/api/events'>/api/events</a> endpoints return the same data the pages render. curl them.</li>
+<li>the source is on github at <a href='https://github.com/Frontier-Compute/ctaz-explorer' target='_blank' rel='noopener'>Frontier-Compute/ctaz-explorer</a>, mit. clone it, point it at any crosslink rpc, and run the same pages.</li>
+</ul>
+
+<h3>finalizer delegation</h3>
+
+<p>per the workshop faq, s1 explorers can run a finalizer and ask protocol guardians to delegate in support of the operator. this operator runs finalizer <code>{{ operator_pubkey }}</code>. season 1 has zero finalizer commission, so staking rewards flow pro rata to delegators; the operator gets voting power and a community signal, not income. delegation instructions at <a href='/stake'>/stake</a>. if the explorer goes down, the delegation should follow somewhere that stays up.</p>
+
+<h3>what is not here, honestly</h3>
+
+<ul>
+<li>no cross-chain bridge visualization. that layer belongs somewhere else.</li>
+<li>no mempool view. ctaz mempool is effectively empty and a mempool pane would only underline it.</li>
+<li>no rich charts beyond the sparklines. charts drift and a drifting chart is worse than no chart.</li>
+<li>no shielded-memo decoding. shielded memos are encrypted end to end, so "decoding" them would require recipient keys, which the explorer does not have and should never have.</li>
+</ul>
+
+<h3>footer</h3>
+
+<p class='muted'>if something looks wrong, open an issue on the repo. if something looks right, just use it. the operator is zk-nd3r (<a href='https://github.com/Zk-nd3r'>github</a>, <a href='https://x.com/Zk_nd3r'>x</a>). no dms required.</p>
+{% endblock %}
