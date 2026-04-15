@@ -7,13 +7,13 @@
   <div class='stat'><div class='label'>finality gap</div><div class='value'>{% if finality_gap is not none %}{{ finality_gap }}{% else %}—{% endif %}<span class='unit'>blocks</span></div></div>
   <a href='/pool/orchard' class='stat shielded stat-link'><div class='label'>shielded (orchard)</div><div class='value'>{{ orchard }}<span class='unit'>ctaz</span></div></a>
   <a href='/pool/transparent' class='stat stat-link'><div class='label'>transparent</div><div class='value'>{{ transparent }}<span class='unit'>ctaz</span></div></a>
-  <div class='stat'><div class='label'>finalizers</div><div class='value'>{{ roster | length }}</div></div>
+  <a href='/finalizers' class='stat stat-link'><div class='label'>finalizers</div><div class='value'>{{ roster | length }}</div></a>
   <div class='stat'><div class='label'>p2p peers</div><div class='value'>{{ connections }}</div></div>
   <div class='stat'><div class='label'>stake total</div><div class='value'>{{ total_vp | ctaz }}<span class='unit'>ctaz</span></div></div>
 </section>
 
 <div class='banner'>
-<span>zooko said someone should. to support, <a href='/stake'>delegate to the finalizer</a>. protocol parameters at <a href='/params'>/params</a>, json at <a href='/api/tip'>/api/tip</a>.</span>
+<span>zooko said someone should. explorer built in a day, <a href='/why'>why</a>. delegate to support the operator at <a href='/stake'>/stake</a>. everything verifiable at <a href='/verify'>/verify</a>.</span>
 </div>
 
 <h2>recent blocks</h2>
@@ -31,4 +31,25 @@
 {% endfor %}
 </tbody>
 </table>
+
+<h2>stack surfaces on ctaz</h2>
+<section class='stats'>
+<a href='/anchors' class='stat stat-link{% if anchor_count %} shielded{% endif %}'>
+<div class='label'>zap1 anchors</div>
+<div class='value'>{{ anchor_count }}</div>
+</a>
+<a href='/vaults' class='stat stat-link'>
+<div class='label'>shieldedvault agents</div>
+<div class='value'>{{ vault_count }}</div>
+</a>
+<a href='/events' class='stat stat-link'>
+<div class='label'>zeven events</div>
+<div class='value'>{{ event_count }}</div>
+</a>
+<a href='/params' class='stat stat-link'>
+<div class='label'>protocol params</div>
+<div class='value'>→</div>
+</a>
+</section>
+<p class='muted'>the attestation registries on ctaz start empty and populate as real ctaz transactions land. rendering plumbing is live; nothing is asserted until an on-chain anchor exists. the same surfaces run in production on zcash mainnet.</p>
 {% endblock %}

@@ -232,6 +232,9 @@ async def home(request: Request):
     transparent = pools.get('transparent', {}).get('chainValue', 0)
     finalized_height = final_hh.get('height') if final_hh and isinstance(final_hh, dict) else None
     finality_gap = (tip - finalized_height) if finalized_height is not None else None
+    anchors = [e for e in load_registry('zap1-anchors.json') if e.get('network') == 'ctaz-s1']
+    vaults = [e for e in load_registry('vaults.json') if e.get('network') == 'ctaz-s1']
+    events = [e for e in load_registry('zeven-events.json') if e.get('network') == 'ctaz-s1']
     return templates.TemplateResponse(request, 'home.html', {
         'request': request,
         'tip': tip,
@@ -245,6 +248,9 @@ async def home(request: Request):
         'orchard': orchard,
         'transparent': transparent,
         'recent': list(reversed(recent)),
+        'anchor_count': len(anchors),
+        'vault_count': len(vaults),
+        'event_count': len(events),
     })
 
 
