@@ -14,7 +14,7 @@ minimal open source block explorer for the crosslink season 1 feature net. rende
 
 ## run
 
-needs a running zebra-crosslink node with rpc at 127.0.0.1:8232.
+needs a running zebra-crosslink node with rpc at 127.0.0.1:8232 (default for upstream zebra-crosslink).
 
     pip install fastapi uvicorn jinja2 httpx
     git clone https://github.com/Frontier-Compute/ctaz-explorer

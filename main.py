@@ -13,6 +13,18 @@ rpc = ZebradRPC()
 OPERATOR_FINALIZER_PUBKEY = '646ae0e999d5c1d0f69bce3aaf5f5a71537bbc964c270a88f772592d79e14061'
 
 
+def humanize_ts(ts):
+    try:
+        import time
+        delta = int(time.time()) - int(ts)
+        if delta < 60: return f'{delta}s ago'
+        if delta < 3600: return f'{delta // 60}m ago'
+        if delta < 86400: return f'{delta // 3600}h ago'
+        return f'{delta // 86400}d ago'
+    except Exception:
+        return str(ts)
+
+
 def zats_to_ctaz(zats):
     try:
         return f'{int(zats) / 1e8:.4f}'
@@ -28,6 +40,7 @@ def short_hash(h, n=16):
 
 templates.env.filters['ctaz'] = zats_to_ctaz
 templates.env.filters['short'] = short_hash
+templates.env.filters['ago'] = humanize_ts
 templates.env.globals['operator_pubkey'] = OPERATOR_FINALIZER_PUBKEY
 
 
@@ -78,6 +91,11 @@ async def home(request: Request):
     recent_raw = await asyncio.gather(*[fetch_recent_block(h) for h in range(max(0, tip - 9), tip + 1)])
     recent = [b for b in recent_raw if b is not None]
     total_vp = sum(int(m.get('voting_power', 0)) for m in roster)
+    pools = {p['id']: p for p in chaininfo.get('valuePools', [])}
+    orchard = pools.get('orchard', {}).get('chainValue', 0)
+    transparent = pools.get('transparent', {}).get('chainValue', 0)
+    finalized_height = final_hh.get('height') if final_hh and isinstance(final_hh, dict) else None
+    finality_gap = (tip - finalized_height) if finalized_height is not None else None
     return templates.TemplateResponse(request, 'home.html', {
         'request': request,
         'tip': tip,
@@ -86,6 +104,10 @@ async def home(request: Request):
         'roster': roster,
         'total_vp': total_vp,
         'finalized': final_hh,
+        'finalized_height': finalized_height,
+        'finality_gap': finality_gap,
+        'orchard': orchard,
+        'transparent': transparent,
         'recent': list(reversed(recent)),
     })
 

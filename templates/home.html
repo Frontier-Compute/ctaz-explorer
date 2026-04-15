@@ -3,10 +3,12 @@
 {% block content %}
 <section class='stats'>
   <div class='stat'><div class='label'>tip</div><div class='value'>{{ tip }}</div></div>
-  <div class='stat'><div class='label'>finalized</div><div class='value'>{% if finalized and finalized.height is defined %}{{ finalized.height }}{% else %}—{% endif %}</div></div>
-  <div class='stat'><div class='label'>supply</div><div class='value'>{{ chaininfo.chainSupply.chainValue }}<span class='unit'>ctaz</span></div></div>
+  <div class='stat'><div class='label'>finalized</div><div class='value'>{% if finalized_height is not none %}{{ finalized_height }}{% else %}—{% endif %}</div></div>
+  <div class='stat'><div class='label'>finality gap</div><div class='value'>{% if finality_gap is not none %}{{ finality_gap }}{% else %}—{% endif %}<span class='unit'>blocks</span></div></div>
+  <div class='stat'><div class='label'>shielded (orchard)</div><div class='value'>{{ orchard }}<span class='unit'>ctaz</span></div></div>
+  <div class='stat'><div class='label'>transparent</div><div class='value'>{{ transparent }}<span class='unit'>ctaz</span></div></div>
   <div class='stat'><div class='label'>finalizers</div><div class='value'>{{ roster | length }}</div></div>
-  <div class='stat'><div class='label'>peers</div><div class='value'>{{ connections }}</div></div>
+  <div class='stat'><div class='label'>p2p peers</div><div class='value'>{{ connections }}</div></div>
   <div class='stat'><div class='label'>stake total</div><div class='value'>{{ total_vp | ctaz }}<span class='unit'>ctaz</span></div></div>
 </section>
 
@@ -23,7 +25,7 @@
 <td><a href='/block/{{ b.height }}'>{{ b.height }}</a></td>
 <td class='hash'><a href='/block/{{ b.hash }}'>{{ b.hash | short }}</a></td>
 <td>{{ b.tx_count }}</td>
-<td class='muted'>{{ b.time }}</td>
+<td class='muted'>{{ b.time | ago }}</td>
 </tr>
 {% endfor %}
 </tbody>

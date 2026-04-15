@@ -3,7 +3,7 @@
 {% block content %}
 <h2>support</h2>
 
-<p>open source explorer, runs on a small vps behind cloudflared, no ads, no analytics, no api keys, no rate limits, maintained by zk-nd3r.</p>
+<p>open source explorer, runs on a small vps, no ads, no analytics, no api keys, no rate limits, maintained by zk-nd3r.</p>
 
 <p>per zooko in the crosslink s1 signal group, explorer operators run a finalizer and ask the protocol guardians for delegated stake as a funding model. that is the plan.</p>
 
@@ -19,6 +19,9 @@
 <dt>current stake</dt>
 <dd>{{ our_stake | ctaz }} ctaz</dd>
 </div>
+
+<h3>privacy</h3>
+<p>no access logs, no cookies, no analytics, no cross origin beacons. nginx serves this page with access_log off and a strict csp that only allows self origin. the only thing that leaves this box to cloudflare infrastructure is certbot's acme renewals.</p>
 
 <h3>operator notes</h3>
 <ul>
