@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}address {{ addr[:16] }}…{% endblock %}
+{% block content %}
+<h2>address</h2>
+<dl class="detail">
+<dt>address</dt><dd class="hash">{{ addr }}</dd>
+<dt>balance</dt><dd>{{ balance.balance | ctaz }} ctaz</dd>
+<dt>received</dt><dd>{{ balance.received | ctaz }} ctaz</dd>
+</dl>
+
+<h3>recent transactions ({{ txids | length }})</h3>
+<ul class="txlist">
+{% for txid in txids %}
+<li class="hash"><a href="/tx/{{ txid }}">{{ txid }}</a></li>
+{% else %}
+<li class="muted">no transactions found</li>
+{% endfor %}
+</ul>
+{% endblock %}

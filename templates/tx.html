@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}tx {{ txid[:16] }}…{% endblock %}
+{% block content %}
+<h2>transaction</h2>
+<dl class="detail">
+<dt>txid</dt><dd class="hash">{{ txid }}</dd>
+<dt>size</dt><dd>{{ tx.size if tx.size is defined else "—" }} bytes</dd>
+<dt>version</dt><dd>{{ tx.version if tx.version is defined else "—" }}</dd>
+<dt>locktime</dt><dd>{{ tx.locktime if tx.locktime is defined else "—" }}</dd>
+<dt>finality</dt><dd>{% if finality %}{{ finality }}{% else %}unknown{% endif %}</dd>
+</dl>
+
+{% if tx.vin %}
+<h3>inputs ({{ tx.vin | length }})</h3>
+<ul class="txlist">
+{% for vin in tx.vin %}
+<li class="hash">{% if vin.txid %}<a href="/tx/{{ vin.txid }}">{{ vin.txid }}</a>:{{ vin.vout }}{% elif vin.coinbase %}coinbase: {{ vin.coinbase }}{% endif %}</li>
+{% endfor %}
+</ul>
+{% endif %}
+
+{% if tx.vout %}
+<h3>outputs ({{ tx.vout | length }})</h3>
+<ul class="txlist">
+{% for vout in tx.vout %}
+<li>{{ vout.value }} ctaz → {% if vout.scriptPubKey and vout.scriptPubKey.addresses %}{% for a in vout.scriptPubKey.addresses %}<a href="/address/{{ a }}" class="hash">{{ a }}</a>{% endfor %}{% else %}<span class="muted">non-standard</span>{% endif %}</li>
+{% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

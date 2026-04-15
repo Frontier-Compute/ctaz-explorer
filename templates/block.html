@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}block {{ block.height }}{% endblock %}
+{% block content %}
+<h2>block {{ block.height }}</h2>
+<dl class="detail">
+<dt>hash</dt><dd class="hash">{{ block.hash }}</dd>
+<dt>height</dt><dd>{{ block.height }}</dd>
+<dt>prev</dt><dd class="hash">{% if block.previousblockhash %}<a href="/block/{{ block.previousblockhash }}">{{ block.previousblockhash }}</a>{% else %}—{% endif %}</dd>
+<dt>merkle root</dt><dd class="hash">{{ block.merkleroot }}</dd>
+<dt>time</dt><dd>{{ block.time }}</dd>
+<dt>confirmations</dt><dd>{{ block.confirmations }}</dd>
+<dt>size</dt><dd>{{ block.size }} bytes</dd>
+<dt>finality</dt><dd>{% if finality %}{{ finality }}{% else %}unknown{% endif %}</dd>
+</dl>
+
+<h3>transactions ({{ block.tx | length }})</h3>
+<ul class="txlist">
+{% for txid in block.tx %}
+<li class="hash"><a href="/tx/{{ txid }}">{{ txid }}</a></li>
+{% endfor %}
+</ul>
+{% endblock %}
