@@ -12,6 +12,15 @@ rpc = ZebradRPC()
 
 OPERATOR_FINALIZER_PUBKEY = '646ae0e999d5c1d0f69bce3aaf5f5a71537bbc964c270a88f772592d79e14061'
 
+POOL_META = {
+    'orchard': {'label': 'orchard', 'kind': 'shielded', 'class': 'pool-orchard'},
+    'sapling': {'label': 'sapling', 'kind': 'shielded', 'class': 'pool-sapling'},
+    'sprout': {'label': 'sprout', 'kind': 'shielded', 'class': 'pool-sapling'},
+    'transparent': {'label': 'transparent', 'kind': 'transparent', 'class': 'pool-transparent'},
+    'lockbox': {'label': 'lockbox', 'kind': 'lockbox', 'class': 'pool-transparent'},
+}
+POOL_HISTORY_WINDOW = 200
+
 
 def humanize_ts(ts):
     try:
@@ -279,6 +288,114 @@ async def stake_view(request: Request):
         'in_roster': in_roster,
         'our_stake': our_stake,
     })
+
+
+async def fetch_block_by_height(h):
+    h_hash = await safe_call('getblockhash', [h])
+    if not h_hash:
+        return None
+    return await safe_call('getblock', [h_hash, 1])
+
+
+async def fetch_pool_history(pool_id: str, tip: int, window: int = POOL_HISTORY_WINDOW):
+    start = max(0, tip - window + 1)
+    heights = list(range(start, tip + 1))
+    sem = asyncio.Semaphore(20)
+    async def fetch(h):
+        async with sem:
+            return await fetch_block_by_height(h)
+    blocks = await asyncio.gather(*[fetch(h) for h in heights])
+    series = []
+    for h, block in zip(heights, blocks):
+        if not block:
+            continue
+        pools = {p['id']: p for p in block.get('valuePools', [])}
+        pool = pools.get(pool_id)
+        if not pool:
+            continue
+        series.append({
+            'height': h,
+            'time': block.get('time'),
+            'value_zat': int(pool.get('chainValueZat', 0) or 0),
+            'delta_zat': int(pool.get('valueDeltaZat', 0) or 0),
+            'tx_count': len(block.get('tx', [])),
+        })
+    return series
+
+
+def build_sparkline(values, width=600, height=80, stroke='#cf9b22'):
+    if not values or len(values) < 2:
+        return ''
+    vmin = min(values)
+    vmax = max(values)
+    span = max(vmax - vmin, 1)
+    n = len(values)
+    points = []
+    for i, v in enumerate(values):
+        x = (i / (n - 1)) * width
+        y = height - ((v - vmin) / span) * (height - 8) - 4
+        points.append(f'{x:.1f},{y:.1f}')
+    poly = ' '.join(points)
+    return (
+        f'<svg class="sparkline" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" aria-label="cumulative pool value">'
+        f'<polyline fill="none" stroke="{stroke}" stroke-width="1.8" points="{poly}" stroke-linejoin="round" stroke-linecap="round"/>'
+        f'</svg>'
+    )
+
+
+@app.get('/pool/{pool_id}')
+async def pool_view(request: Request, pool_id: str):
+    if pool_id not in POOL_META:
+        raise HTTPException(status_code=404, detail='unknown pool')
+    info, chaininfo = await asyncio.gather(
+        safe_call('getinfo'),
+        safe_call('getblockchaininfo'),
+    )
+    if not info:
+        raise HTTPException(status_code=503, detail='node not ready')
+    tip = info.get('blocks', 0)
+    series = await fetch_pool_history(pool_id, tip)
+    values_zat = [s['value_zat'] for s in series]
+    sparkline_svg = build_sparkline(values_zat)
+    chain_pool = {}
+    for p in (chaininfo or {}).get('valuePools', []) or []:
+        if p.get('id') == pool_id:
+            chain_pool = p
+            break
+    recent_nonzero = [s for s in reversed(series) if s['delta_zat'] != 0][:20]
+    window_delta = values_zat[-1] - values_zat[0] if len(values_zat) >= 2 else 0
+    return templates.TemplateResponse(request, 'pool.html', {
+        'request': request,
+        'pool_id': pool_id,
+        'pool_meta': POOL_META[pool_id],
+        'tip': tip,
+        'series_len': len(series),
+        'current_zat': int(chain_pool.get('chainValueZat', 0) or 0),
+        'chain_value': chain_pool.get('chainValue'),
+        'monitored': chain_pool.get('monitored', False),
+        'window_delta_zat': window_delta,
+        'sparkline_svg': sparkline_svg,
+        'recent_nonzero': recent_nonzero,
+        'window': POOL_HISTORY_WINDOW,
+    })
+
+
+@app.get('/api/pool/{pool_id}')
+async def api_pool(pool_id: str):
+    if pool_id not in POOL_META:
+        return JSONResponse(status_code=404, content={'error': 'unknown pool'})
+    info = await safe_call('getinfo')
+    if not info:
+        return JSONResponse(status_code=503, content={'error': 'node not ready'})
+    tip = info.get('blocks', 0)
+    series = await fetch_pool_history(pool_id, tip)
+    return {
+        'pool': pool_id,
+        'kind': POOL_META[pool_id]['kind'],
+        'tip': tip,
+        'window': POOL_HISTORY_WINDOW,
+        'series': series,
+    }
 
 
 @app.get('/params')
