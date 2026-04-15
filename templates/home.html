@@ -13,18 +13,19 @@
 </section>
 
 <div class='banner'>
-<span>zooko said someone should. to support, <a href='/stake'>delegate to the finalizer</a>.</span>
+<span>zooko said someone should. to support, <a href='/stake'>delegate to the finalizer</a>. protocol parameters at <a href='/params'>/params</a>, json at <a href='/api/tip'>/api/tip</a>.</span>
 </div>
 
 <h2>recent blocks</h2>
 <table class='blocks'>
-<thead><tr><th>height</th><th>hash</th><th>tx</th><th>time</th></tr></thead>
+<thead><tr><th>height</th><th>hash</th><th>tx</th><th>finality</th><th>time</th></tr></thead>
 <tbody>
 {% for b in recent %}
 <tr>
 <td><a href='/block/{{ b.height }}'>{{ b.height }}</a></td>
 <td class='hash'><a href='/block/{{ b.hash }}'>{{ b.hash | short }}</a></td>
 <td>{{ b.tx_count }}</td>
+<td><span class='finality small {{ b.finality | fincls }}'>{{ b.finality | finlbl }}</span></td>
 <td class='muted'>{{ b.time | ago }}</td>
 </tr>
 {% endfor %}

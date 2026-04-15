@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}protocol parameters{% endblock %}
+{% block content %}
+<h2>protocol parameters</h2>
+<p class='muted'>live parameters from the node running this explorer. season 1 is a feature net, several tfl parameters are still stub surfaces in the monolith. this page marks them honestly.</p>
+
+<h3>chain</h3>
+<dl class='detail'>
+<dt>network</dt><dd>crosslink s1 feature net</dd>
+<dt>zebra chain id</dt><dd>{{ chaininfo.chain or '—' }}</dd>
+<dt>zebra build</dt><dd>{{ info.subversion or '—' }}</dd>
+<dt>protocol version</dt><dd>{{ info.protocolversion or '—' }}</dd>
+<dt>tip height</dt><dd>{{ info.blocks or '—' }}</dd>
+<dt>headers</dt><dd>{{ chaininfo.headers or '—' }}</dd>
+<dt>difficulty</dt><dd>{{ info.difficulty or '—' }}</dd>
+<dt>relay fee</dt><dd>{{ info.relayfee or '—' }}</dd>
+</dl>
+
+<h3>finality</h3>
+<dl class='detail'>
+<dt>finalized height</dt><dd>{% if finalized %}{{ finalized.height }}{% else %}—{% endif %}</dd>
+<dt>active finalizers</dt><dd>{{ roster_len }}</dd>
+<dt>σ (prefix agreement depth)</dt><dd class='muted'>not exposed via rpc, see <a href='https://zcash.github.io/TheBookOfZcash/' target='_blank' rel='noopener'>tfl spec</a></dd>
+<dt>L (final agreement depth)</dt><dd class='muted'>not exposed via rpc, see tfl spec</dd>
+<dt>staking day cycle</dt><dd class='muted'>stub in s1, window ≈ 70 blocks out of every 150 per workshop faq</dd>
+<dt>finalizer commission</dt><dd class='muted'>zero in s1, rewards flow pro rata to delegators</dd>
+</dl>
+
+<h3>stub surfaces</h3>
+<p class='muted'>the following crosslink surfaces are declared but return <code>NotImplemented</code> or are latent in s1. source of truth is the monolith at <a href='https://github.com/ShieldedLabs/crosslink_monolith' target='_blank' rel='noopener'>ShieldedLabs/crosslink_monolith</a> and the speculative build at commit d880b65.</p>
+<ul>
+<li><code>staking_command</code> rpc returns NotImplemented; real path lives at <code>wallet/src/lib.rs:1923</code> in <code>stake_orchard_to_finalizer</code></li>
+<li>BFT finalizer rotation is still driven by speculative roster snapshots, not on-chain governance</li>
+<li>visualizer_zcash is an unconditional dependency on the monolith crate graph per issue #14</li>
+</ul>
+
+<h3>json</h3>
+<p class='muted'>programmatic access to the same surface at <a href='/api/params'><code>/api/params</code></a>, <a href='/api/tip'><code>/api/tip</code></a>, <a href='/api/finalizers'><code>/api/finalizers</code></a>.</p>
+{% endblock %}

@@ -35,12 +35,35 @@ def zats_to_ctaz(zats):
 def short_hash(h, n=16):
     if not h:
         return ''
-    return str(h)[:n] + '…'
+    s = str(h)
+    if len(s) <= n:
+        return s
+    return s[:n] + '…'
+
+
+def bytes_to_hex(b):
+    if isinstance(b, list):
+        return ''.join(f'{x:02x}' for x in b)
+    return str(b) if b else ''
+
+
+def human_size(n):
+    try:
+        n = int(n)
+        for unit in ['B', 'KB', 'MB']:
+            if n < 1024:
+                return f'{n:.0f}{unit}' if unit == 'B' else f'{n:.1f}{unit}'
+            n /= 1024
+        return f'{n:.1f}GB'
+    except Exception:
+        return '—'
 
 
 templates.env.filters['ctaz'] = zats_to_ctaz
 templates.env.filters['short'] = short_hash
 templates.env.filters['ago'] = humanize_ts
+templates.env.filters['hexbytes'] = bytes_to_hex
+templates.env.filters['hsize'] = human_size
 templates.env.globals['operator_pubkey'] = OPERATOR_FINALIZER_PUBKEY
 
 
@@ -61,11 +84,14 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={'error': exc.detail})
 
 
-async def fetch_recent_block(h):
+async def fetch_recent_block_with_finality(h):
     h_hash = await safe_call('getblockhash', [h])
     if not h_hash:
         return None
-    block = await safe_call('getblock', [h_hash, 1])
+    block, finality = await asyncio.gather(
+        safe_call('getblock', [h_hash, 1]),
+        safe_call('get_tfl_block_finality_from_hash', [h_hash]),
+    )
     if not block:
         return None
     return {
@@ -73,6 +99,51 @@ async def fetch_recent_block(h):
         'hash': h_hash,
         'tx_count': len(block.get('tx', [])),
         'time': block.get('time'),
+        'finality': finality or 'Unknown',
+    }
+
+
+def finality_class(finality):
+    if finality == 'Finalized':
+        return 'finalized'
+    if finality == 'NotYetFinalized':
+        return 'notyet'
+    return 'unknown'
+
+
+def finality_label(finality):
+    if finality == 'Finalized':
+        return 'bft finalized'
+    if finality == 'NotYetFinalized':
+        return 'pow only'
+    return 'unknown'
+
+
+templates.env.filters['fincls'] = finality_class
+templates.env.filters['finlbl'] = finality_label
+
+
+def tx_value_flow(tx):
+    transparent_out_zat = 0
+    for v in tx.get('vout', []) or []:
+        try:
+            transparent_out_zat += int(v.get('valueZat', 0))
+        except Exception:
+            pass
+    orchard = tx.get('orchard') or {}
+    orchard_balance_zat = int(orchard.get('valueBalanceZat', 0) or 0)
+    actions = len(orchard.get('actions', []) or [])
+    sapling_spend = len(tx.get('vShieldedSpend', []) or [])
+    sapling_output = len(tx.get('vShieldedOutput', []) or [])
+    is_coinbase = bool(tx.get('vin') and tx['vin'][0].get('coinbase'))
+    return {
+        'transparent_out_zat': transparent_out_zat,
+        'orchard_balance_zat': orchard_balance_zat,
+        'orchard_actions': actions,
+        'sapling_spend': sapling_spend,
+        'sapling_output': sapling_output,
+        'is_coinbase': is_coinbase,
+        'is_shielded': actions > 0 or sapling_spend > 0 or sapling_output > 0,
     }
 
 
@@ -88,7 +159,7 @@ async def home(request: Request):
         raise HTTPException(status_code=503, detail='node not ready')
     roster = roster or []
     tip = info['blocks']
-    recent_raw = await asyncio.gather(*[fetch_recent_block(h) for h in range(max(0, tip - 9), tip + 1)])
+    recent_raw = await asyncio.gather(*[fetch_recent_block_with_finality(h) for h in range(max(0, tip - 9), tip + 1)])
     recent = [b for b in recent_raw if b is not None]
     total_vp = sum(int(m.get('voting_power', 0)) for m in roster)
     pools = {p['id']: p for p in chaininfo.get('valuePools', [])}
@@ -124,10 +195,25 @@ async def block_view(request: Request, hash_or_height: str):
     if not block:
         raise HTTPException(status_code=404, detail='block not found')
     finality = await safe_call('get_tfl_block_finality_from_hash', [h_hash])
+    height = block.get('height')
+    next_hash = None
+    if height is not None:
+        next_hash = await safe_call('getblockhash', [height + 1])
+    pool_deltas = []
+    for p in block.get('valuePools', []) or []:
+        delta = int(p.get('valueDeltaZat', 0) or 0)
+        if delta != 0 or p.get('monitored'):
+            pool_deltas.append({
+                'id': p.get('id'),
+                'delta_zat': delta,
+                'total_zat': int(p.get('chainValueZat', 0) or 0),
+            })
     return templates.TemplateResponse(request, 'block.html', {
         'request': request,
         'block': block,
-        'finality': finality,
+        'finality': finality or 'Unknown',
+        'next_hash': next_hash,
+        'pool_deltas': pool_deltas,
     })
 
 
@@ -137,11 +223,13 @@ async def tx_view(request: Request, txid: str):
     if not tx:
         raise HTTPException(status_code=404, detail='transaction not found')
     finality = await safe_call('get_tfl_tx_finality_from_hash', [txid])
+    flow = tx_value_flow(tx)
     return templates.TemplateResponse(request, 'tx.html', {
         'request': request,
         'tx': tx,
         'txid': txid,
-        'finality': finality,
+        'finality': finality or 'Unknown',
+        'flow': flow,
     })
 
 
@@ -193,6 +281,23 @@ async def stake_view(request: Request):
     })
 
 
+@app.get('/params')
+async def params_view(request: Request):
+    info, chaininfo, final_hh, roster = await asyncio.gather(
+        safe_call('getinfo'),
+        safe_call('getblockchaininfo'),
+        safe_call('get_tfl_final_block_height_and_hash'),
+        safe_call('get_tfl_roster_zats'),
+    )
+    return templates.TemplateResponse(request, 'params.html', {
+        'request': request,
+        'info': info or {},
+        'chaininfo': chaininfo or {},
+        'finalized': final_hh,
+        'roster_len': len(roster or []),
+    })
+
+
 @app.get('/search')
 async def search(request: Request, q: str = ''):
     q = q.strip()
@@ -217,3 +322,74 @@ async def health():
     if not info:
         return JSONResponse(status_code=503, content={'ok': False})
     return {'ok': True, 'tip': info.get('blocks'), 'connections': info.get('connections')}
+
+
+@app.get('/api/tip')
+async def api_tip():
+    info, final_hh = await asyncio.gather(
+        safe_call('getinfo'),
+        safe_call('get_tfl_final_block_height_and_hash'),
+    )
+    if not info:
+        return JSONResponse(status_code=503, content={'error': 'node not ready'})
+    tip = info.get('blocks')
+    finalized = final_hh.get('height') if final_hh and isinstance(final_hh, dict) else None
+    return {
+        'tip': tip,
+        'finalized': finalized,
+        'finality_gap': (tip - finalized) if finalized is not None else None,
+        'connections': info.get('connections', 0),
+    }
+
+
+@app.get('/api/block/{hash_or_height}')
+async def api_block(hash_or_height: str):
+    if hash_or_height.isdigit():
+        h_hash = await safe_call('getblockhash', [int(hash_or_height)])
+    else:
+        h_hash = hash_or_height
+    if not h_hash:
+        return JSONResponse(status_code=404, content={'error': 'not found'})
+    block, finality = await asyncio.gather(
+        safe_call('getblock', [h_hash, 1]),
+        safe_call('get_tfl_block_finality_from_hash', [h_hash]),
+    )
+    if not block:
+        return JSONResponse(status_code=404, content={'error': 'not found'})
+    return {'block': block, 'finality': finality or 'Unknown'}
+
+
+@app.get('/api/tx/{txid}')
+async def api_tx(txid: str):
+    tx, finality = await asyncio.gather(
+        safe_call('getrawtransaction', [txid, 1]),
+        safe_call('get_tfl_tx_finality_from_hash', [txid]),
+    )
+    if not tx:
+        return JSONResponse(status_code=404, content={'error': 'not found'})
+    return {'tx': tx, 'finality': finality or 'Unknown', 'flow': tx_value_flow(tx)}
+
+
+@app.get('/api/finalizers')
+async def api_finalizers():
+    roster = await safe_call('get_tfl_roster_zats') or []
+    roster_sorted = sorted(roster, key=lambda m: int(m.get('voting_power', 0)), reverse=True)
+    total_vp = sum(int(m.get('voting_power', 0)) for m in roster_sorted)
+    return {'count': len(roster_sorted), 'total_voting_power_zat': total_vp, 'roster': roster_sorted}
+
+
+@app.get('/api/params')
+async def api_params():
+    info, chaininfo = await asyncio.gather(
+        safe_call('getinfo'),
+        safe_call('getblockchaininfo'),
+    )
+    return {
+        'chain': (chaininfo or {}).get('chain'),
+        'network': 'crosslink s1 feature net',
+        'protocol_version': (info or {}).get('protocolversion'),
+        'zebra_version': (info or {}).get('subversion'),
+        'tip': (info or {}).get('blocks'),
+        'difficulty': (info or {}).get('difficulty'),
+        'relay_fee': (info or {}).get('relayfee'),
+    }

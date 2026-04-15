@@ -1,30 +1,73 @@
 {% extends "base.html" %}
 {% block title %}tx {{ txid[:16] }}…{% endblock %}
 {% block content %}
+<div class='page-head'>
 <h2>transaction</h2>
-<dl class="detail">
-<dt>txid</dt><dd class="hash">{{ txid }}</dd>
-<dt>size</dt><dd>{{ tx.size if tx.size is defined else "—" }} bytes</dd>
-<dt>version</dt><dd>{{ tx.version if tx.version is defined else "—" }}</dd>
-<dt>locktime</dt><dd>{{ tx.locktime if tx.locktime is defined else "—" }}</dd>
-<dt>finality</dt><dd>{% if finality %}{{ finality }}{% else %}unknown{% endif %}</dd>
+<span class='finality {{ finality | fincls }}'>{{ finality | finlbl }}</span>
+</div>
+
+<p class='hash big'>{{ txid }}</p>
+
+<div class='flow'>
+<div class='flow-cell {% if flow.is_coinbase %}highlight{% endif %}'>
+<div class='flow-label'>inputs</div>
+<div class='flow-value'>{% if flow.is_coinbase %}coinbase{% else %}{{ tx.vin | length }} transparent{% endif %}</div>
+</div>
+<div class='flow-arrow'>→</div>
+<div class='flow-cell'>
+<div class='flow-label'>transparent out</div>
+<div class='flow-value'>{{ flow.transparent_out_zat | ctaz }} ctaz</div>
+<div class='flow-sub muted'>{{ tx.vout | length }} output{% if tx.vout | length != 1 %}s{% endif %}</div>
+</div>
+{% if flow.is_shielded %}
+<div class='flow-arrow'>+</div>
+<div class='flow-cell shielded'>
+<div class='flow-label'>shielded</div>
+<div class='flow-value'>{% if flow.orchard_actions %}{{ flow.orchard_actions }} orchard action{% if flow.orchard_actions != 1 %}s{% endif %}{% endif %}{% if flow.sapling_spend or flow.sapling_output %}{% if flow.orchard_actions %}<br>{% endif %}{{ flow.sapling_spend }}→{{ flow.sapling_output }} sapling{% endif %}</div>
+{% if flow.orchard_balance_zat != 0 %}<div class='flow-sub muted'>balance {{ flow.orchard_balance_zat | ctaz }} ctaz</div>{% endif %}
+</div>
+{% endif %}
+</div>
+
+<dl class='detail'>
+<dt>size</dt><dd>{{ tx.size if tx.size is defined else '—' }} bytes</dd>
+<dt>version</dt><dd>{{ tx.version if tx.version is defined else '—' }}</dd>
+<dt>locktime</dt><dd>{{ tx.locktime if tx.locktime is defined else '—' }}</dd>
+{% if tx.expiryheight is defined %}<dt>expiry height</dt><dd>{{ tx.expiryheight }}</dd>{% endif %}
+{% if tx.blockhash %}<dt>block</dt><dd class='hash'><a href='/block/{{ tx.blockhash }}'>{{ tx.blockhash }}</a></dd>{% endif %}
+{% if tx.height is defined %}<dt>block height</dt><dd><a href='/block/{{ tx.height }}'>{{ tx.height }}</a></dd>{% endif %}
+{% if tx.time %}<dt>time</dt><dd>{{ tx.time | ago }} <span class='muted'>(unix {{ tx.time }})</span></dd>{% endif %}
+{% if tx.confirmations is defined %}<dt>confirmations</dt><dd>{{ tx.confirmations }}</dd>{% endif %}
 </dl>
 
 {% if tx.vin %}
 <h3>inputs ({{ tx.vin | length }})</h3>
-<ul class="txlist">
+<ul class='txlist'>
 {% for vin in tx.vin %}
-<li class="hash">{% if vin.txid %}<a href="/tx/{{ vin.txid }}">{{ vin.txid }}</a>:{{ vin.vout }}{% elif vin.coinbase %}coinbase: {{ vin.coinbase }}{% endif %}</li>
+<li>
+{% if vin.coinbase %}<span class='pool-tag'>coinbase</span> <span class='hash muted'>{{ vin.coinbase }}</span>
+{% else %}<span class='hash'><a href='/tx/{{ vin.txid }}'>{{ vin.txid }}</a>:{{ vin.vout }}</span>
+{% endif %}
+</li>
 {% endfor %}
 </ul>
 {% endif %}
 
 {% if tx.vout %}
 <h3>outputs ({{ tx.vout | length }})</h3>
-<ul class="txlist">
+<ul class='txlist'>
 {% for vout in tx.vout %}
-<li>{{ vout.value }} ctaz → {% if vout.scriptPubKey and vout.scriptPubKey.addresses %}{% for a in vout.scriptPubKey.addresses %}<a href="/address/{{ a }}" class="hash">{{ a }}</a>{% endfor %}{% else %}<span class="muted">non-standard</span>{% endif %}</li>
+<li>
+<span class='num'>{{ vout.value }} ctaz</span>
+<span class='arrow muted'>→</span>
+{% if vout.scriptPubKey and vout.scriptPubKey.addresses %}{% for a in vout.scriptPubKey.addresses %}<a href='/address/{{ a }}' class='hash'>{{ a }}</a>{% endfor %}{% else %}<span class='muted'>non-standard</span>{% endif %}
+</li>
 {% endfor %}
 </ul>
+{% endif %}
+
+{% if flow.is_shielded %}
+<h3>shielded</h3>
+<p class='muted'>{{ flow.orchard_actions }} orchard action{% if flow.orchard_actions != 1 %}s{% endif %}, {{ flow.sapling_spend }} sapling spend{% if flow.sapling_spend != 1 %}s{% endif %}, {{ flow.sapling_output }} sapling output{% if flow.sapling_output != 1 %}s{% endif %}. content is encrypted, only the recipient can decode memos and amounts.</p>
 {% endif %}
 {% endblock %}
