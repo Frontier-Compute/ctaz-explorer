@@ -536,6 +536,74 @@ async def api_events():
     return {'network': 'ctaz-s1', 'count': len(registry), 'events': registry}
 
 
+async def build_verification(txid: str):
+    tx, finality = await asyncio.gather(
+        safe_call('getrawtransaction', [txid, 1]),
+        safe_call('get_tfl_tx_finality_from_hash', [txid]),
+    )
+    if not tx:
+        return None
+    block_finality = None
+    if tx.get('blockhash'):
+        block_finality = await safe_call('get_tfl_block_finality_from_hash', [tx['blockhash']])
+    flow = tx_value_flow(tx)
+    zap1 = lookup_zap1_anchor(txid)
+    if zap1:
+        zap1 = dict(zap1)
+        zap1['event_label'] = ZAP1_EVENT_LABELS.get(zap1.get('event_type', '').lower(), 'unknown event')
+    zeven = lookup_zeven_event(txid)
+    return {
+        'txid': txid,
+        'found': True,
+        'block': {
+            'hash': tx.get('blockhash'),
+            'height': tx.get('height'),
+            'time': tx.get('time'),
+            'confirmations': tx.get('confirmations'),
+        },
+        'finality': {
+            'tx': finality or 'Unknown',
+            'block': block_finality or 'Unknown',
+        },
+        'flow': flow,
+        'zap1_anchor': zap1,
+        'vault': None,
+        'zeven_event': zeven,
+        'size': tx.get('size'),
+        'version': tx.get('version'),
+    }
+
+
+@app.get('/verify')
+async def verify_view(request: Request, q: str = ''):
+    q = q.strip()
+    result = None
+    error = None
+    if q:
+        if len(q) != 64 or not all(c in '0123456789abcdef' for c in q.lower()):
+            error = 'txid must be 64 hex characters'
+        else:
+            result = await build_verification(q)
+            if result is None:
+                error = 'transaction not found on this chain'
+    return templates.TemplateResponse(request, 'verify.html', {
+        'request': request,
+        'q': q,
+        'result': result,
+        'error': error,
+    })
+
+
+@app.get('/api/verify/{txid}')
+async def api_verify(txid: str):
+    if len(txid) != 64 or not all(c in '0123456789abcdef' for c in txid.lower()):
+        return JSONResponse(status_code=400, content={'error': 'txid must be 64 hex characters'})
+    result = await build_verification(txid)
+    if result is None:
+        return JSONResponse(status_code=404, content={'txid': txid, 'found': False})
+    return result
+
+
 @app.get('/search')
 async def search(request: Request, q: str = ''):
     q = q.strip()

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}verify{% endblock %}
+{% block content %}
+<h2>verify a transaction</h2>
+<p class='muted'>paste a ctaz txid, get the block, finality, pool usage, and any matching zap1 / vault / zeven registry entry in one shot. identical output available as json at <code>/api/verify/&lt;txid&gt;</code>, curl-friendly, no auth, no rate limit.</p>
+
+<form action='/verify' method='get' class='search'>
+<input type='text' name='q' placeholder='64-char tx hash' value='{{ q or "" }}' autocomplete='off' spellcheck='false'>
+<button type='submit'>verify</button>
+</form>
+
+{% if error %}
+<p class='muted' style='color:#a03333'>{{ error }}</p>
+{% endif %}
+
+{% if result %}
+<h3>verification result</h3>
+<dl class='detail'>
+<dt>txid</dt><dd class='hash'>{{ result.txid }}</dd>
+<dt>found</dt><dd>yes</dd>
+<dt>block</dt><dd class='hash'>{% if result.block.hash %}<a href='/block/{{ result.block.hash }}'>{{ result.block.hash }}</a>{% else %}<span class='muted'>mempool or unknown</span>{% endif %}</dd>
+{% if result.block.height is not none %}<dt>height</dt><dd>{{ result.block.height }}</dd>{% endif %}
+{% if result.block.confirmations is not none %}<dt>confirmations</dt><dd>{{ result.block.confirmations }}</dd>{% endif %}
+<dt>tx finality</dt><dd><span class='finality {{ result.finality.tx | fincls }}'>{{ result.finality.tx | finlbl }}</span></dd>
+<dt>block finality</dt><dd><span class='finality {{ result.finality.block | fincls }}'>{{ result.finality.block | finlbl }}</span></dd>
+<dt>size</dt><dd>{{ result.size }} bytes</dd>
+<dt>transparent out</dt><dd>{{ result.flow.transparent_out_zat | ctaz }} ctaz across {{ result.flow.orchard_actions + result.flow.sapling_output + result.flow.sapling_spend }} shielded ops</dd>
+<dt>is coinbase</dt><dd>{{ 'yes' if result.flow.is_coinbase else 'no' }}</dd>
+<dt>is shielded</dt><dd>{{ 'yes' if result.flow.is_shielded else 'no' }}</dd>
+</dl>
+
+<h3>stack registry matches</h3>
+<dl class='detail'>
+<dt>zap1 anchor</dt><dd>{% if result.zap1_anchor %}<span class='badge badge-zap1'>{{ result.zap1_anchor.event_label }}</span> payload <code>{{ result.zap1_anchor.payload_hash | short }}</code>{% else %}no match in registry{% endif %}</dd>
+<dt>shieldedvault</dt><dd>{% if result.vault %}<span class='badge badge-vault'>{{ result.vault.vault_id }}</span>{% else %}no match in registry{% endif %}</dd>
+<dt>zeven event</dt><dd>{% if result.zeven_event %}<span class='badge badge-zeven'>{{ result.zeven_event.kind }}</span>{% else %}no match in registry{% endif %}</dd>
+</dl>
+
+<p class='muted'>none of this is asserted by the explorer. the block, finality, and flow come from the zebra node running this page. the registry matches compare against public json files at <a href='/api/anchors'>/api/anchors</a>, <a href='/api/vaults'>/api/vaults</a>, <a href='/api/events'>/api/events</a>. you can clone the registry files and run the same checks locally.</p>
+
+<details>
+<summary class='muted'>raw json</summary>
+<pre style='overflow-x:auto;background:var(--card);border:1px solid var(--border);padding:12px;border-radius:6px;font-size:0.75rem;'>{{ result | tojson(indent=2) }}</pre>
+</details>
+{% endif %}
+{% endblock %}
