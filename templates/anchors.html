@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}zap1 anchors on ctaz{% endblock %}
+{% block content %}
+<h2>zap1 attestation anchors on ctaz</h2>
+<p class='muted'>zap1 is an open attestation protocol that anchors event commitments as structured memos inside shielded transactions on a zcash-family chain. the memo format is <code>ZAP1:{type}:{payload_hash}</code>, 73 bytes, blake2b-256 with NordicShield_ personalization. full protocol at <a href='https://github.com/Frontier-Compute/zap1' target='_blank' rel='noopener'>github.com/Frontier-Compute/zap1</a>.</p>
+
+<h3>registered anchors</h3>
+{% if anchors %}
+<table class='pools'>
+<thead><tr><th>height</th><th>event</th><th>payload hash</th><th>txid</th></tr></thead>
+<tbody>
+{% for a in anchors %}
+<tr>
+<td>{% if a.block_height %}<a href='/block/{{ a.block_height }}'>{{ a.block_height }}</a>{% else %}<span class='muted'>—</span>{% endif %}</td>
+<td><span class='pool-tag pool-orchard'>{{ a.event_type }}</span> {{ a.event_label }}</td>
+<td class='hash'>{{ a.payload_hash | short }}</td>
+<td class='hash'><a href='/tx/{{ a.txid }}'>{{ a.txid | short }}</a></td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<p class='muted'>no zap1 anchors registered on ctaz s1 feature net yet. the tooling, parser, and attestation card rendering are live; anchors show up here automatically once posted. zap1 has been operating on zcash mainnet since 2026-03; porting to ctaz is intentional and requires a funded shielded wallet on this feature net.</p>
+{% endif %}
+
+<h3>supported event types</h3>
+<table class='pools'>
+<thead><tr><th>type</th><th>name</th></tr></thead>
+<tbody>
+{% for code, label in event_labels.items() %}
+<tr><td><span class='pool-tag'>{{ code }}</span></td><td>{{ label }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+
+<h3>json</h3>
+<p class='muted'>programmatic: <a href='/api/anchors'><code>/api/anchors</code></a></p>
+{% endblock %}

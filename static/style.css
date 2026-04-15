@@ -459,3 +459,88 @@ a.stat-link:hover {
 a.stat-link .value {
   color: var(--fg);
 }
+
+/* phase 2 additions: badges, cards for zap1/vault/zeven */
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 0.64rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-family: 'Inter', system-ui, sans-serif;
+  border: 1px solid transparent;
+}
+.badge-zap1 {
+  background: var(--gold-tint);
+  border-color: var(--gold-border);
+  color: #5c4110;
+}
+.badge-vault {
+  background: #f1ecf7;
+  border-color: #dfd4ec;
+  color: #4b2978;
+}
+.badge-zeven {
+  background: #eef6ee;
+  border-color: #d4e5d4;
+  color: #2c5a2f;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px 18px;
+  margin: 12px 0 18px;
+}
+.card-zap1 {
+  background: var(--gold-tint);
+  border-color: var(--gold-border);
+}
+.card-zeven {
+  background: #f7faf5;
+  border-color: #d4e5d4;
+}
+.card-vault {
+  background: #f7f3fb;
+  border-color: #dfd4ec;
+}
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.card-title {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  color: var(--fg);
+}
+.card-body {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 8px 18px;
+  margin: 0;
+  font-size: 0.85rem;
+}
+.card-body dt {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg-muted);
+  font-weight: 600;
+  padding-top: 2px;
+}
+.card-body dd {
+  margin: 0;
+  word-break: break-all;
+}
+.card-foot {
+  font-size: 0.76rem;
+  margin: 12px 0 0;
+}

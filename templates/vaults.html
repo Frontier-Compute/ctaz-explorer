@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}shieldedvault on ctaz{% endblock %}
+{% block content %}
+<h2>shieldedvault agents on ctaz</h2>
+<p class='muted'>shieldedvault is a custody agent standard for autonomous wallets that hold capital, act under policy, and leave an auditable proof trail. the standard composes zcash-ika (split-key custody), frost threshold signing, zap1 attestation, and mempalace continuity memory. specification at <a href='https://github.com/Frontier-Compute/shieldedvault-spec' target='_blank' rel='noopener'>shieldedvault-spec</a>.</p>
+
+<h3>registered vaults</h3>
+{% if vaults %}
+<table class='pools'>
+<thead><tr><th>vault id</th><th>pubkey</th><th>kind</th><th>last activity</th></tr></thead>
+<tbody>
+{% for v in vaults %}
+<tr>
+<td>{{ v.vault_id }}</td>
+<td class='hash'>{{ v.pubkey | short }}</td>
+<td><span class='pool-tag'>{{ v.kind or 'agent' }}</span></td>
+<td class='muted'>{{ v.last_activity or '—' }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<p class='muted'>no shieldedvault agents registered on ctaz s1 feature net yet. the vault badge, attestation card, and /vaults listing are live. a vault-origin transaction on this chain will appear here automatically. the standard already runs in production on zcash mainnet.</p>
+{% endif %}
+
+<h3>json</h3>
+<p class='muted'>programmatic: <a href='/api/vaults'><code>/api/vaults</code></a></p>
+{% endblock %}

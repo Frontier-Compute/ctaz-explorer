@@ -1,4 +1,7 @@
 import asyncio
+import json
+import os
+import pathlib
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -20,6 +23,59 @@ POOL_META = {
     'lockbox': {'label': 'lockbox', 'kind': 'lockbox', 'class': 'pool-transparent'},
 }
 POOL_HISTORY_WINDOW = 200
+
+DATA_DIR = pathlib.Path(os.environ.get('CTAZ_DATA_DIR', 'data'))
+
+
+def load_registry(name: str):
+    path = DATA_DIR / name
+    try:
+        with path.open('r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []
+    except Exception:
+        return []
+
+
+ZAP1_EVENT_LABELS = {
+    '01': 'program entry',
+    '02': 'ownership attest',
+    '03': 'contract anchor',
+    '04': 'deployment',
+    '05': 'hosting payment',
+    '06': 'shield renewal',
+    '07': 'transfer',
+    '08': 'exit',
+    '09': 'merkle root',
+    '0a': 'staking deposit',
+    '0b': 'staking withdraw',
+    '0c': 'staking reward',
+}
+
+
+def lookup_zap1_anchor(txid: str):
+    registry = load_registry('zap1-anchors.json')
+    for entry in registry:
+        if entry.get('txid', '').lower() == txid.lower() and entry.get('network') == 'ctaz-s1':
+            return entry
+    return None
+
+
+def lookup_vault(pubkey: str):
+    registry = load_registry('vaults.json')
+    for entry in registry:
+        if entry.get('pubkey', '').lower() == pubkey.lower():
+            return entry
+    return None
+
+
+def lookup_zeven_event(txid: str):
+    registry = load_registry('zeven-events.json')
+    for entry in registry:
+        if entry.get('txid', '').lower() == txid.lower() and entry.get('network') == 'ctaz-s1':
+            return entry
+    return None
 
 
 def humanize_ts(ts):
@@ -233,12 +289,19 @@ async def tx_view(request: Request, txid: str):
         raise HTTPException(status_code=404, detail='transaction not found')
     finality = await safe_call('get_tfl_tx_finality_from_hash', [txid])
     flow = tx_value_flow(tx)
+    zap1_anchor = lookup_zap1_anchor(txid)
+    if zap1_anchor:
+        zap1_anchor = dict(zap1_anchor)
+        zap1_anchor['event_label'] = ZAP1_EVENT_LABELS.get(zap1_anchor.get('event_type', '').lower(), 'unknown event')
+    zeven_event = lookup_zeven_event(txid)
     return templates.TemplateResponse(request, 'tx.html', {
         'request': request,
         'tx': tx,
         'txid': txid,
         'finality': finality or 'Unknown',
         'flow': flow,
+        'zap1_anchor': zap1_anchor,
+        'zeven_event': zeven_event,
     })
 
 
@@ -413,6 +476,64 @@ async def params_view(request: Request):
         'finalized': final_hh,
         'roster_len': len(roster or []),
     })
+
+
+@app.get('/anchors')
+async def anchors_view(request: Request):
+    registry = [e for e in load_registry('zap1-anchors.json') if e.get('network') == 'ctaz-s1']
+    for e in registry:
+        e['event_label'] = ZAP1_EVENT_LABELS.get(e.get('event_type', '').lower(), 'unknown event')
+    registry.sort(key=lambda e: int(e.get('block_height') or 0), reverse=True)
+    return templates.TemplateResponse(request, 'anchors.html', {
+        'request': request,
+        'anchors': registry,
+        'event_labels': ZAP1_EVENT_LABELS,
+    })
+
+
+@app.get('/api/anchors')
+async def api_anchors():
+    registry = [e for e in load_registry('zap1-anchors.json') if e.get('network') == 'ctaz-s1']
+    registry.sort(key=lambda e: int(e.get('block_height') or 0), reverse=True)
+    return {
+        'protocol': 'ZAP1',
+        'network': 'ctaz-s1',
+        'count': len(registry),
+        'event_types_supported': ZAP1_EVENT_LABELS,
+        'anchors': registry,
+    }
+
+
+@app.get('/vaults')
+async def vaults_view(request: Request):
+    registry = [e for e in load_registry('vaults.json') if e.get('network') == 'ctaz-s1']
+    return templates.TemplateResponse(request, 'vaults.html', {
+        'request': request,
+        'vaults': registry,
+    })
+
+
+@app.get('/api/vaults')
+async def api_vaults():
+    registry = [e for e in load_registry('vaults.json') if e.get('network') == 'ctaz-s1']
+    return {'network': 'ctaz-s1', 'count': len(registry), 'vaults': registry}
+
+
+@app.get('/events')
+async def events_view(request: Request):
+    registry = [e for e in load_registry('zeven-events.json') if e.get('network') == 'ctaz-s1']
+    registry.sort(key=lambda e: int(e.get('block_height') or 0), reverse=True)
+    return templates.TemplateResponse(request, 'events.html', {
+        'request': request,
+        'events': registry,
+    })
+
+
+@app.get('/api/events')
+async def api_events():
+    registry = [e for e in load_registry('zeven-events.json') if e.get('network') == 'ctaz-s1']
+    registry.sort(key=lambda e: int(e.get('block_height') or 0), reverse=True)
+    return {'network': 'ctaz-s1', 'count': len(registry), 'events': registry}
 
 
 @app.get('/search')

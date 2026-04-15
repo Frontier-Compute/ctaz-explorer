@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}zeven event stream on ctaz{% endblock %}
+{% block content %}
+<h2>zeven event stream on ctaz</h2>
+<p class='muted'>zeven is a chain-watching automation layer. it watches finality, roster, pool flow, and explorer health, and posts event anchors back onto the chain it watches. the anchors are a closed-loop proof that the watcher is running on the thing it reports on.</p>
+
+<h3>recent events</h3>
+{% if events %}
+<table class='pools'>
+<thead><tr><th>height</th><th>kind</th><th>payload</th><th>txid</th></tr></thead>
+<tbody>
+{% for e in events %}
+<tr>
+<td>{% if e.block_height %}<a href='/block/{{ e.block_height }}'>{{ e.block_height }}</a>{% else %}<span class='muted'>—</span>{% endif %}</td>
+<td><span class='pool-tag'>{{ e.kind }}</span></td>
+<td class='hash muted'>{{ e.summary or '' }}</td>
+<td class='hash'><a href='/tx/{{ e.txid }}'>{{ e.txid | short }}</a></td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<p class='muted'>no zeven events anchored on ctaz s1 feature net yet. the stream, badge, and /events page are live and will populate once the watcher starts posting to this feature net. the watcher is already running against zcash mainnet on the reference deployment.</p>
+{% endif %}
+
+<h3>json</h3>
+<p class='muted'>programmatic: <a href='/api/events'><code>/api/events</code></a></p>
+{% endblock %}
