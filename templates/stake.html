@@ -5,11 +5,14 @@
 
 <p>open source explorer, runs on a small vps, no ads, no analytics, no api keys, no rate limits, maintained by zk-nd3r.</p>
 
-<p>per zooko in the crosslink s1 signal group, explorer operators run a finalizer and ask the protocol guardians for delegated stake as a funding model. that is the plan.</p>
+<p>per zooko in the crosslink s1 signal group, explorer operators run a finalizer and ask the protocol guardians to delegate to support the explorer. season 1 has no finalizer commission, so staking rewards flow to delegators pro rata by bond amount. delegation here is voting power and community signal for this operator, not operator income. mining rewards fund the vps.</p>
+
+<h3>privacy</h3>
+<p>no access logs, no cookies, no analytics, no cross origin beacons. nginx serves this page with access_log off and a strict csp that only allows self origin. the only thing that leaves this box to cloudflare infrastructure is certbot's acme renewals.</p>
 
 <h3>delegate</h3>
 
-<p>copy the pub key below. in the crosslink desktop wallet, during a staking day window, hit stake, paste identity, stake any amount. active roster refreshes every 150 blocks.</p>
+<p>copy the pub key below. in the crosslink desktop wallet, during a staking day window (every 150 blocks, 70 block window), hit stake, paste identity, stake any amount. you keep the staking rewards; this operator gains voting power and a community signal.</p>
 
 <div class='detail'>
 <dt>finalizer pub key</dt>
@@ -20,13 +23,10 @@
 <dd>{{ our_stake | ctaz }} ctaz</dd>
 </div>
 
-<h3>privacy</h3>
-<p>no access logs, no cookies, no analytics, no cross origin beacons. nginx serves this page with access_log off and a strict csp that only allows self origin. the only thing that leaves this box to cloudflare infrastructure is certbot's acme renewals.</p>
-
 <h3>operator notes</h3>
 <ul>
 <li>explorer stays up or the health endpoint is honest about why</li>
-<li>delegated stake rewards fund node infrastructure</li>
+<li>mining rewards fund the vps, season 1 has zero finalizer commission</li>
 <li>no retargeting off this pub key without a notice here</li>
 <li>mit license, source in the footer</li>
 </ul>
