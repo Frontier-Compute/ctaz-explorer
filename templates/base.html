@@ -1,28 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang='en'>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
 <title>{% block title %}ctaz-explorer{% endblock %}</title>
-<link rel="stylesheet" href="/static/style.css">
+<link rel='stylesheet' href='/static/style.css'>
 </head>
 <body>
 <header>
-<a href="/" class="brand">ctaz-explorer</a>
+<a href='/' class='brand'>ctaz-explorer</a>
 <nav>
-<a href="/">chain</a>
-<a href="/finalizers">finalizers</a>
+<a href='/'>chain</a>
+<a href='/finalizers'>finalizers</a>
+<a href='/stake'>support</a>
 </nav>
 </header>
 <main>
-<form action="/search" method="get" class="search">
-<input type="text" name="q" placeholder="block height, block hash, tx hash, or address" autocomplete="off">
-<button type="submit">go</button>
+<form action='/search' method='get' class='search'>
+<input type='text' name='q' placeholder='block height, block hash, tx hash, or address' autocomplete='off'>
+<button type='submit'>go</button>
 </form>
 {% block content %}{% endblock %}
 </main>
 <footer>
-<p>crosslink season 1 feature net, open source at <a href="https://github.com/Frontier-Compute/ctaz-explorer">github.com/Frontier-Compute/ctaz-explorer</a>, built because zooko said someone should</p>
+<p>crosslink season 1 feature net, open source at <a href='https://github.com/Frontier-Compute/ctaz-explorer'>github.com/Frontier-Compute/ctaz-explorer</a>, built because zooko said someone should</p>
 </footer>
 </body>
 </html>

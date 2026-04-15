@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}support this explorer{% endblock %}
+{% block content %}
+<h2>support this explorer</h2>
+
+<p>this explorer is free and open source, runs on a single vps behind a cloudflare tunnel, maintained by zk-nd3r. there are no ads, no analytics, no api keys, no rate limits.</p>
+
+<p>zooko suggested in the crosslink s1 workshop signal group that explorer operators should run a finalizer and accept delegated stake as a funding model. that is the plan for this one.</p>
+
+<h3>how to support this operator</h3>
+
+<p>copy the finalizer pub key below and, in the crosslink desktop wallet during a staking day window, paste it as the target and stake any amount. delegated stake on the active roster earns block rewards, those rewards fund the server, and at the end of season 1 the real zec payout is distributed pro rata to miners and stakers based on block rewards earned.</p>
+
+<div class='detail'>
+<dt>operator finalizer pub key</dt>
+<dd class='hash' id='pubkey'>{{ pubkey }}</dd>
+<dt>in active roster</dt>
+<dd>{% if in_roster %}yes{% else %}not yet, stake to include{% endif %}</dd>
+<dt>current stake</dt>
+<dd>{{ our_stake | ctaz }} ctaz</dd>
+</div>
+
+<h3>what this operator promises</h3>
+<ul>
+<li>the explorer stays up, or a transparent status is shown when it is not</li>
+<li>any cTAZ earned from delegated stake is used to fund node infrastructure and keep the explorer running</li>
+<li>no bond retargeting to anyone other than this same pub key without a visible notice on this page</li>
+<li>source code stays mit licensed on the github repo linked in the footer</li>
+</ul>
+
+<p class='muted'>this page will show your delegated stake against this operator once the active roster reflects it. active roster refreshes each staking day window (every 150 blocks).</p>
+{% endblock %}
