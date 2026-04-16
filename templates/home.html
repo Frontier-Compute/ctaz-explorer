@@ -5,11 +5,11 @@
   <div class='stat'><div class='label'>tip</div><div class='value'>{{ tip }}</div></div>
   <div class='stat'><div class='label'>finalized</div><div class='value'>{% if finalized_height is not none %}{{ finalized_height }}{% else %}—{% endif %}</div></div>
   <div class='stat'><div class='label'>finality gap</div><div class='value'>{% if finality_gap is not none %}{{ finality_gap }}{% else %}—{% endif %}<span class='unit'>blocks</span></div></div>
-  <a href='/pool/orchard' class='stat shielded stat-link'><div class='label'>shielded (orchard)</div><div class='value'>{{ orchard }}<span class='unit'>ctaz</span></div></a>
-  <a href='/pool/transparent' class='stat stat-link'><div class='label'>transparent</div><div class='value'>{{ transparent }}<span class='unit'>ctaz</span></div></a>
+  <a href='/pool/orchard' class='stat shielded stat-link'><div class='label'>shielded (orchard)</div><div class='value'>{{ orchard | amt }}<span class='unit'>ctaz</span></div></a>
+  <a href='/pool/transparent' class='stat stat-link'><div class='label'>transparent</div><div class='value'>{{ transparent | amt }}<span class='unit'>ctaz</span></div></a>
   <a href='/finalizers' class='stat stat-link'><div class='label'>finalizers</div><div class='value'>{{ roster | length }}</div></a>
   <div class='stat'><div class='label'>p2p peers</div><div class='value'>{{ connections }}</div></div>
-  <div class='stat'><div class='label'>stake total</div><div class='value'>{{ total_vp | ctaz }}<span class='unit'>ctaz</span></div></div>
+  <div class='stat'><div class='label'>stake total</div><div class='value'>{{ (total_vp / 100000000) | amt }}<span class='unit'>ctaz</span></div></div>
 </section>
 
 <div class='banner'>
@@ -18,7 +18,7 @@
 
 <h2>recent blocks</h2>
 <table class='blocks'>
-<thead><tr><th>height</th><th>hash</th><th>tx</th><th>finality</th><th>time</th></tr></thead>
+<thead><tr><th>height</th><th>hash</th><th>tx</th><th>finality</th><th>block time (utc)</th></tr></thead>
 <tbody>
 {% for b in recent %}
 <tr>
@@ -26,7 +26,7 @@
 <td class='hash'><a href='/block/{{ b.hash }}'>{{ b.hash | short }}</a></td>
 <td>{{ b.tx_count }}</td>
 <td><span class='finality small {{ b.finality | fincls }}'>{{ b.finality | finlbl }}</span></td>
-<td class='muted'>{{ b.time | ago }}</td>
+<td class='muted'>{{ b.time | iso }}</td>
 </tr>
 {% endfor %}
 </tbody>

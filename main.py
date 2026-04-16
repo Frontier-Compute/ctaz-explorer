@@ -220,6 +220,25 @@ templates.env.filters['short'] = short_hash
 templates.env.filters['ago'] = humanize_ts
 templates.env.filters['hexbytes'] = bytes_to_hex
 templates.env.filters['hsize'] = human_size
+
+
+def fmt_amount(x, places=2):
+    try:
+        return f'{float(x):,.{places}f}'
+    except Exception:
+        return str(x)
+
+
+def iso_time(ts):
+    try:
+        from datetime import datetime, timezone
+        return datetime.fromtimestamp(int(ts), tz=timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+    except Exception:
+        return str(ts)
+
+
+templates.env.filters['amt'] = fmt_amount
+templates.env.filters['iso'] = iso_time
 templates.env.globals['operator_pubkey'] = OPERATOR_FINALIZER_PUBKEY
 
 
