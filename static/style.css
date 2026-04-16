@@ -598,3 +598,67 @@ a.stat-link .value {
   font-style: normal;
 }
 .footer-aside a:hover { color: var(--fg-muted); }
+
+/* hero strip */
+.hero {
+  margin: 36px 0 44px;
+  padding: 12px 0 24px;
+  text-align: center;
+}
+.hero-label {
+  font-size: 0.64rem;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.hero-number {
+  font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, Consolas, monospace;
+  font-size: 4.5rem;
+  font-weight: 700;
+  color: var(--fg);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.035em;
+}
+.hero-line {
+  margin-top: 22px;
+  font-size: 0.88rem;
+  color: var(--fg-muted);
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-variant-numeric: tabular-nums;
+}
+.hero-line .sep {
+  color: var(--fg-dim);
+}
+.aside {
+  margin: 32px 0 20px;
+  font-size: 0.82rem;
+  color: var(--fg-muted);
+  line-height: 1.8;
+}
+.aside a {
+  color: var(--accent-dim);
+  text-decoration: underline;
+  text-decoration-color: rgba(154, 111, 26, 0.3);
+  text-underline-offset: 2px;
+}
+.aside a:hover {
+  color: var(--fg);
+  text-decoration-color: rgba(154, 111, 26, 0.8);
+}
+
+/* darker accent for better contrast on body text */
+a {
+  color: var(--accent-dim);
+}
+a:hover { color: var(--fg); }
+
+/* cleaner table row spacing */
+table.blocks th, table.blocks td {
+  padding: 13px 16px;
+}

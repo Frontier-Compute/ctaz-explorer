@@ -1,24 +1,24 @@
 {% extends 'base.html' %}
-{% block title %}ctaz-explorer · chain{% endblock %}
+{% block title %}ctaz-explorer{% endblock %}
 {% block content %}
-<section class='stats'>
-  <div class='stat'><div class='label'>tip</div><div class='value'>{{ tip }}</div></div>
-  <div class='stat'><div class='label'>finalized</div><div class='value'>{% if finalized_height is not none %}{{ finalized_height }}{% else %}—{% endif %}</div></div>
-  <div class='stat'><div class='label'>finality gap</div><div class='value'>{% if finality_gap is not none %}{{ finality_gap }}{% else %}—{% endif %}<span class='unit'>blocks</span></div></div>
-  <a href='/pool/orchard' class='stat shielded stat-link'><div class='label'>shielded (orchard)</div><div class='value'>{{ orchard }}<span class='unit'>ctaz</span></div></a>
-  <a href='/pool/transparent' class='stat stat-link'><div class='label'>transparent</div><div class='value'>{{ transparent }}<span class='unit'>ctaz</span></div></a>
-  <a href='/finalizers' class='stat stat-link'><div class='label'>finalizers</div><div class='value'>{{ roster | length }}</div></a>
-  <div class='stat'><div class='label'>p2p peers</div><div class='value'>{{ connections }}</div></div>
-  <div class='stat'><div class='label'>stake total</div><div class='value'>{{ total_vp | ctaz }}<span class='unit'>ctaz</span></div></div>
-</section>
 
-<div class='banner'>
-<span>crosslink s1 feature net explorer. <a href=./why.>why this exists</a>. delegate to support the operator at <a href='/stake'>/stake</a>. everything verifiable at <a href='/verify'>/verify</a>.</span>
+<section class='hero'>
+<div class='hero-label'>tip</div>
+<div class='hero-number'>{{ tip }}</div>
+<div class='hero-line'>
+<span>finalized {% if finalized_height is not none %}{{ finalized_height }}{% else %}—{% endif %}</span>
+<span class='sep'>·</span>
+<span>gap {% if finality_gap is not none %}{{ finality_gap }}{% else %}—{% endif %} blocks</span>
+<span class='sep'>·</span>
+<span>{{ roster | length }} finalizers</span>
+<span class='sep'>·</span>
+<span>{{ connections }} peers</span>
 </div>
+</section>
 
 <h2>recent blocks</h2>
 <table class='blocks'>
-<thead><tr><th>height</th><th>hash</th><th>tx</th><th>finality</th><th>time</th></tr></thead>
+<thead><tr><th>height</th><th>hash</th><th>tx</th><th>finality</th><th>age</th></tr></thead>
 <tbody>
 {% for b in recent %}
 <tr>
@@ -32,24 +32,9 @@
 </tbody>
 </table>
 
-<h2>stack surfaces on ctaz</h2>
-<section class='stats'>
-<a href='/anchors' class='stat stat-link{% if anchor_count %} shielded{% endif %}'>
-<div class='label'>zap1 anchors</div>
-<div class='value'>{{ anchor_count }}</div>
-</a>
-<a href='/vaults' class='stat stat-link'>
-<div class='label'>shieldedvault agents</div>
-<div class='value'>{{ vault_count }}</div>
-</a>
-<a href='/events' class='stat stat-link'>
-<div class='label'>zeven events</div>
-<div class='value'>{{ event_count }}</div>
-</a>
-<a href='/params' class='stat stat-link'>
-<div class='label'>protocol params</div>
-<div class='value'>→</div>
-</a>
-</section>
-<p class='muted'>the attestation registries on ctaz start empty and populate as real ctaz transactions land. rendering plumbing is live; nothing is asserted until an on-chain anchor exists. the same surfaces run in production on zcash mainnet.</p>
+<p class='aside'>
+pools: <a href='/pool/orchard'>orchard</a> {{ orchard }}, <a href='/pool/transparent'>transparent</a> {{ transparent }}, stake {{ total_vp | ctaz }} ctaz.<br>
+registries: <a href='/anchors'>anchors</a> {{ anchor_count }}, <a href='/vaults'>vaults</a> {{ vault_count }}, <a href='/events'>events</a> {{ event_count }}.
+</p>
+
 {% endblock %}
