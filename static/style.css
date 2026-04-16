@@ -544,3 +544,44 @@ a.stat-link .value {
   font-size: 0.76rem;
   margin: 12px 0 0;
 }
+
+/* phase wd1: footer cross-link buildout */
+
+.footer-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 18px 22px;
+  margin: 24px 0 18px;
+  padding: 18px 0 4px;
+  border-top: 1px solid var(--row-border);
+}
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.footer-col .footer-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--fg-muted);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.footer-col a {
+  color: var(--fg-muted);
+  text-decoration: none;
+  font-size: 0.78rem;
+  letter-spacing: -0.003em;
+}
+.footer-col a:hover {
+  color: var(--accent);
+}
+.footer-main {
+  margin: 8px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--row-border);
+  font-size: 0.74rem;
+  color: var(--fg-muted);
+  letter-spacing: -0.002em;
+}
