@@ -12,9 +12,9 @@
 <pre class='status'>tip              {{ tip }}
 finalized        {% if finalized_height is not none %}{{ finalized_height }}{% else %}—{% endif %}
 gap              {% if finality_gap is not none %}{{ finality_gap }} blocks{% else %}—{% endif %}
-orchard pool     {{ orchard | fmt2 }} ctaz
-transparent      {{ transparent | fmt2 }} ctaz
-finalizers       {{ roster | length }} active, {{ (total_vp / 100000000) | fmt2 }} ctaz staked
+orchard pool     {{ "%.2f" | format(orchard) }} ctaz
+transparent      {{ "%.2f" | format(transparent) }} ctaz
+finalizers       {{ roster | length }} active, {{ "%.2f" | format(total_vp / 100000000) }} ctaz staked
 peers            {{ connections }}
 zap1 anchors     {{ anchor_count }}</pre>
 </section>
