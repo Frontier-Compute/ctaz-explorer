@@ -1057,3 +1057,88 @@ async def api_params():
         'difficulty': (info or {}).get('difficulty'),
         'relay_fee': (info or {}).get('relayfee'),
     }
+
+
+@app.get("/z/address/{addr}")
+async def zcash_address(request: Request, addr: str):
+    balance = await safe_call_on("zcash", "getaddressbalance", [{"addresses": [addr]}])
+    if balance is None:
+        raise HTTPException(status_code=400, detail="invalid address on zcash mainnet")
+    txids = await safe_call_on("zcash", "getaddresstxids", [{"addresses": [addr]}]) or []
+    return templates.TemplateResponse(request, "zcash_address.html", {
+        "request": request,
+        "chain": CHAINS["zcash"],
+        "addr": addr,
+        "balance": balance,
+        "txids": txids[-50:][::-1],
+    })
+
+
+@app.get("/z/search")
+async def zcash_search(request: Request, q: str = ""):
+    q = q.strip()
+    if not q:
+        return RedirectResponse(url="/z")
+    if q.isdigit():
+        return RedirectResponse(url=f"/z/block/{q}")
+    is_hex64 = len(q) == 64 and all(c in "0123456789abcdef" for c in q.lower())
+    if is_hex64:
+        block = await safe_call_on("zcash", "getblock", [q, 1])
+        if block:
+            return RedirectResponse(url=f"/z/block/{q}")
+        return RedirectResponse(url=f"/z/tx/{q}")
+    if q.startswith(("t1", "t3", "zs", "u1")):
+        return RedirectResponse(url=f"/z/address/{q}")
+    return RedirectResponse(url="/z")
+
+
+@app.get("/api/z/block/{hash_or_height}")
+async def api_zcash_block(hash_or_height: str):
+    if hash_or_height.isdigit():
+        h_hash = await safe_call_on("zcash", "getblockhash", [int(hash_or_height)])
+    else:
+        h_hash = hash_or_height
+    if not h_hash:
+        return JSONResponse(status_code=404, content={"error": "not found"})
+    block = await safe_call_on("zcash", "getblock", [h_hash, 1])
+    if not block:
+        return JSONResponse(status_code=404, content={"error": "not found"})
+    return {"chain": "zcash-mainnet", "block": block}
+
+
+@app.get("/api/z/tx/{txid}")
+async def api_zcash_tx(txid: str):
+    tx = await safe_call_on("zcash", "getrawtransaction", [txid, 1])
+    if not tx:
+        return JSONResponse(status_code=404, content={"error": "not found"})
+    return {"chain": "zcash-mainnet", "tx": tx, "flow": tx_value_flow(tx)}
+
+
+@app.get("/api/z/pool/{pool_id}")
+async def api_zcash_pool(pool_id: str):
+    if pool_id not in POOL_META:
+        return JSONResponse(status_code=404, content={"error": "unknown pool"})
+    info = await safe_call_on("zcash", "getinfo")
+    if not info:
+        return JSONResponse(status_code=503, content={"error": "node not ready"})
+    tip = info.get("blocks", 0)
+    series = await cached_pool_history(pool_id, tip, "zcash")
+    return {"chain": "zcash-mainnet", "pool": pool_id, "tip": tip, "series": series}
+
+
+@app.get("/api/z/verify/{txid}")
+async def api_zcash_verify(txid: str):
+    if len(txid) != 64 or not all(c in "0123456789abcdef" for c in txid.lower()):
+        return JSONResponse(status_code=400, content={"error": "txid must be 64 hex"})
+    tx = await safe_call_on("zcash", "getrawtransaction", [txid, 1])
+    if not tx:
+        return JSONResponse(status_code=404, content={"txid": txid, "found": False})
+    flow = tx_value_flow(tx)
+    anchors = load_chain_registry("zap1-anchors.json", "zcash")
+    zap1 = None
+    for e in anchors:
+        if e.get("txid", "").lower() == txid.lower() and e.get("network") == "zcash-mainnet":
+            zap1 = dict(e)
+            zap1["event_label"] = ZAP1_EVENT_LABELS.get(zap1.get("event_type", "").lower(), "unknown")
+            break
+    return {"chain": "zcash-mainnet", "txid": txid, "found": True, "flow": flow, "zap1_anchor": zap1}

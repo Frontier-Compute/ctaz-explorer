@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}zcash mainnet address {{ addr[:12] }}…{% endblock %}
+{% block content %}
+<div class="page-head">
+<h2>zcash mainnet address</h2>
+<span class="pool-tag pool-orchard">{{ chain.short }}</span>
+</div>
+<p class="hash big">{{ addr }}</p>
+<dl class="detail">
+<dt>balance</dt><dd>{{ balance.balance | ctaz if balance.balance is defined else "—" }} zec</dd>
+<dt>received</dt><dd>{{ balance.received | ctaz if balance.received is defined else "—" }} zec</dd>
+<dt>sent</dt><dd>{{ balance.sent | ctaz if balance.sent is defined else "—" }} zec</dd>
+</dl>
+{% if txids %}
+<h3>recent transactions ({{ txids | length }}{% if txids | length == 50 %}, showing last 50{% endif %})</h3>
+<ul class="txlist">
+{% for txid in txids %}
+<li class="hash"><a href="/z/tx/{{ txid }}">{{ txid }}</a></li>
+{% endfor %}
+</ul>
+{% else %}
+<p class="muted">no transparent transactions found for this address.</p>
+{% endif %}
+<p class="muted">ctaz address lookup at <a href="/address/{{ addr }}">/address</a>. mainnet home at <a href="/z">/z</a>.</p>
+{% endblock %}
