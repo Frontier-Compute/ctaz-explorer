@@ -681,3 +681,56 @@ pre.status {
 
 /* unset hero styles from earlier attempt */
 .hero, .hero-label, .hero-number, .hero-line { display: none; }
+
+/* lead: honest one-line introduction, slight serif feel via size and spacing */
+.lead {
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: var(--fg);
+  margin: 28px 0 24px;
+  max-width: 60ch;
+  letter-spacing: -0.005em;
+}
+
+/* operator: subtle acknowledgment of zooko's funding model */
+.operator {
+  font-size: 0.82rem;
+  color: var(--fg-muted);
+  margin: 22px 0 28px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--gold-border);
+  background: var(--gold-tint);
+  border-radius: 0 4px 4px 0;
+}
+.operator code {
+  font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, Consolas, monospace;
+  font-size: 0.72rem;
+  word-break: break-all;
+  color: #5c4110;
+  background: transparent;
+}
+.operator a {
+  color: #5c4110;
+  text-decoration: underline;
+  text-decoration-color: rgba(92, 65, 16, 0.4);
+  text-underline-offset: 2px;
+  font-weight: 600;
+}
+
+/* verbs: verification primitives as small line-text actions */
+.verbs {
+  font-size: 0.82rem;
+  color: var(--fg-muted);
+  margin: 28px 0 20px;
+  line-height: 1.8;
+}
+.verbs code {
+  font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  font-size: 0.78rem;
+  color: var(--fg-muted);
+}
+
+/* refine status block */
+pre.status {
+  margin: 8px 0 24px;
+}

@@ -2,15 +2,18 @@
 {% block title %}ctaz-explorer{% endblock %}
 {% block content %}
 
-<pre class='status'>chain       crosslink season 1 feature net
-tip         {{ tip }}
+<p class='lead'>crosslink season 1 feature net. shielded zcash with a bft finality layer on top of proof of work. read-only, mit source, no analytics, no cookies, no auth.</p>
+
+<pre class='status'>tip         {{ tip }}
 finalized   {% if finalized_height is not none %}{{ finalized_height }}{% else %}—{% endif %}
-gap         {% if finality_gap is not none %}{{ finality_gap }} blocks{% else %}—{% endif %}
-finalizers  {{ roster | length }} active, {{ total_vp | ctaz }} ctaz staked
+gap         {% if finality_gap is not none %}{{ finality_gap }} blocks behind finality, expected on a young feature net{% else %}—{% endif %}
+orchard     {{ orchard | fmt2 }} ctaz
+transparent {{ transparent | fmt2 }} ctaz
+finalizers  {{ roster | length }} active, {{ (total_vp / 100000000) | fmt2 }} ctaz staked
 peers       {{ connections }}
-orchard     {{ orchard }} ctaz
-transparent {{ transparent }} ctaz
 registries  {{ anchor_count }} zap1 anchors, {{ vault_count }} vaults, {{ event_count }} events</pre>
+
+<p class='operator'>the operator runs finalizer <code>{{ operator_pubkey }}</code>. delegate at <a href='/stake'>/stake</a> to fund explorer operations.</p>
 
 <h2>recent blocks</h2>
 <table class='blocks'>
@@ -27,5 +30,7 @@ registries  {{ anchor_count }} zap1 anchors, {{ vault_count }} vaults, {{ event_
 {% endfor %}
 </tbody>
 </table>
+
+<p class='verbs'>verify any txid at <a href='/verify'>/verify</a>. merkle path printer at <code>/tx/&lt;txid&gt;/merkle.txt</code>. pool flow at <a href='/pool/orchard'>/pool/orchard</a>. protocol parameters at <a href='/params'>/params</a>.</p>
 
 {% endblock %}
