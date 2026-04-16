@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}zcash mainnet {{ pool_meta.label }} pool{% endblock %}
+{% block content %}
+<div class='page-head'>
+<h2>zcash mainnet {{ pool_meta.label }} pool</h2>
+<span class='pool-tag {{ pool_meta.class }}'>{{ pool_meta.kind }}</span>
+</div>
+
+<section class='stats'>
+<div class='stat{% if pool_meta.kind == "shielded" %} shielded{% endif %}'>
+<div class='label'>current value</div>
+<div class='value'>{{ current_zat | ctaz }}<span class='unit'>zec</span></div>
+</div>
+<div class='stat'>
+<div class='label'>window delta ({{ window }} blocks)</div>
+<div class='value'>{% if window_delta_zat > 0 %}+{% endif %}{{ window_delta_zat | ctaz }}<span class='unit'>zec</span></div>
+</div>
+<div class='stat'>
+<div class='label'>tracked blocks</div>
+<div class='value'>{{ series_len }}</div>
+</div>
+<div class='stat'>
+<div class='label'>monitored by node</div>
+<div class='value'>{% if monitored %}yes{% else %}no{% endif %}</div>
+</div>
+</section>
+
+{% if sparkline_svg %}
+<h3>cumulative curve, last {{ series_len }} blocks</h3>
+<div class='sparkline-wrap'>
+{{ sparkline_svg | safe }}
+<div class='sparkline-axis'><span>height {{ tip - series_len + 1 }}</span><span class='muted'>→</span><span>tip {{ tip }}</span></div>
+</div>
+{% endif %}
+
+<h3>recent pool activity</h3>
+{% if recent_nonzero %}
+<table class='pools'>
+<thead><tr><th>height</th><th class='num'>delta</th><th class='num'>chain total after</th><th>time</th></tr></thead>
+<tbody>
+{% for s in recent_nonzero %}
+<tr>
+<td><a href='/z/block/{{ s.height }}'>{{ s.height }}</a></td>
+<td class='num {% if s.delta_zat > 0 %}pos{% elif s.delta_zat < 0 %}neg{% endif %}'>{% if s.delta_zat > 0 %}+{% endif %}{{ s.delta_zat | ctaz }} zec</td>
+<td class='num muted'>{{ s.value_zat | ctaz }}</td>
+<td class='muted'>{{ s.time | ago }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<p class='muted'>no pool deltas in the last {{ window }} blocks.</p>
+{% endif %}
+
+{% if pool_meta.kind == 'shielded' %}
+<h3>privacy note</h3>
+<p class='muted'>shielded pool values are public at the aggregate level but individual memos, amounts, senders, and recipients remain encrypted. the curve above is chain-wide cumulative value. anyone can verify it by running a zebra node.</p>
+{% endif %}
+
+<p class='muted'>ctaz pool pages at <a href='/pool/{{ pool_id }}'>/pool/{{ pool_id }}</a>. json at <a href='/api/pool/{{ pool_id }}'>/api/pool/{{ pool_id }}</a>.</p>
+{% endblock %}

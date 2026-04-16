@@ -49,6 +49,53 @@ POOL_META = {
 }
 POOL_HISTORY_WINDOW = 200
 
+import time as _time
+
+_pool_cache = {}
+_POOL_CACHE_TTL = 30
+
+async def cached_pool_history(pool_id: str, tip: int, chain_key: str = 'ctaz'):
+    key = f'{chain_key}:{pool_id}:{tip}'
+    now = _time.time()
+    if key in _pool_cache and (now - _pool_cache[key][0]) < _POOL_CACHE_TTL:
+        return _pool_cache[key][1]
+    if chain_key == 'ctaz':
+        series = await cached_pool_history(pool_id, tip, 'ctaz')
+    else:
+        series = await fetch_pool_history_chain(pool_id, tip, chain_key)
+    _pool_cache[key] = (now, series)
+    return series
+
+
+async def fetch_pool_history_chain(pool_id: str, tip: int, chain_key: str, window: int = POOL_HISTORY_WINDOW):
+    start = max(0, tip - window + 1)
+    heights = list(range(start, tip + 1))
+    sem = asyncio.Semaphore(20)
+    async def fetch(h):
+        async with sem:
+            h_hash = await safe_call_on(chain_key, 'getblockhash', [h])
+            if not h_hash:
+                return None
+            return await safe_call_on(chain_key, 'getblock', [h_hash, 1])
+    blocks = await asyncio.gather(*[fetch(h) for h in heights])
+    series = []
+    for h, block in zip(heights, blocks):
+        if not block:
+            continue
+        pools = {p['id']: p for p in block.get('valuePools', [])}
+        pool = pools.get(pool_id)
+        if not pool:
+            continue
+        series.append({
+            'height': h,
+            'time': block.get('time'),
+            'value_zat': int(pool.get('chainValueZat', 0) or 0),
+            'delta_zat': int(pool.get('valueDeltaZat', 0) or 0),
+            'tx_count': len(block.get('tx', [])),
+        })
+    return series
+
+
 DATA_DIR = pathlib.Path(os.environ.get('CTAZ_DATA_DIR', 'data'))
 
 
@@ -189,12 +236,30 @@ def load_chain_registry(name: str, chain_key: str):
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
-    return JSONResponse(status_code=500, content={'error': 'internal server error'})
+    if request.url.path.startswith('/api/'):
+        return JSONResponse(status_code=500, content={'error': 'internal server error'})
+    try:
+        return templates.TemplateResponse(request, 'error.html', {
+            'request': request,
+            'status_code': 500,
+            'message': 'internal server error',
+        }, status_code=500)
+    except Exception:
+        return JSONResponse(status_code=500, content={'error': 'internal server error'})
 
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    return JSONResponse(status_code=exc.status_code, content={'error': exc.detail})
+    if request.url.path.startswith('/api/'):
+        return JSONResponse(status_code=exc.status_code, content={'error': exc.detail})
+    try:
+        return templates.TemplateResponse(request, 'error.html', {
+            'request': request,
+            'status_code': exc.status_code,
+            'message': exc.detail or 'something went wrong',
+        }, status_code=exc.status_code)
+    except Exception:
+        return JSONResponse(status_code=exc.status_code, content={'error': exc.detail})
 
 
 async def fetch_recent_block_with_finality(h):
@@ -471,7 +536,7 @@ async def pool_view(request: Request, pool_id: str):
     if not info:
         raise HTTPException(status_code=503, detail='node not ready')
     tip = info.get('blocks', 0)
-    series = await fetch_pool_history(pool_id, tip)
+    series = await cached_pool_history(pool_id, tip, 'ctaz')
     values_zat = [s['value_zat'] for s in series]
     sparkline_svg = build_sparkline(values_zat)
     chain_pool = {}
@@ -505,7 +570,7 @@ async def api_pool(pool_id: str):
     if not info:
         return JSONResponse(status_code=503, content={'error': 'node not ready'})
     tip = info.get('blocks', 0)
-    series = await fetch_pool_history(pool_id, tip)
+    series = await cached_pool_history(pool_id, tip, 'ctaz')
     return {
         'pool': pool_id,
         'kind': POOL_META[pool_id]['kind'],
@@ -823,6 +888,96 @@ async def api_zcash_anchors():
         'event_types_supported': ZAP1_EVENT_LABELS,
         'anchors': registry,
     }
+
+
+
+
+@app.get('/z/pool/{pool_id}')
+async def zcash_pool_view(request: Request, pool_id: str):
+    if pool_id not in POOL_META:
+        raise HTTPException(status_code=404, detail='unknown pool')
+    info = await safe_call_on('zcash', 'getinfo')
+    if not info:
+        raise HTTPException(status_code=503, detail='zcash mainnet node not ready')
+    tip = info.get('blocks', 0)
+    series = await cached_pool_history(pool_id, tip, 'zcash')
+    values_zat = [s['value_zat'] for s in series]
+    sparkline_svg = build_sparkline(values_zat)
+    chaininfo = await safe_call_on('zcash', 'getblockchaininfo')
+    chain_pool = {}
+    for p in (chaininfo or {}).get('valuePools', []) or []:
+        if p.get('id') == pool_id:
+            chain_pool = p
+            break
+    recent_nonzero = [s for s in reversed(series) if s['delta_zat'] != 0][:20]
+    window_delta = values_zat[-1] - values_zat[0] if len(values_zat) >= 2 else 0
+    return templates.TemplateResponse(request, 'zcash_pool.html', {
+        'request': request,
+        'chain': CHAINS['zcash'],
+        'pool_id': pool_id,
+        'pool_meta': POOL_META[pool_id],
+        'tip': tip,
+        'series_len': len(series),
+        'current_zat': int(chain_pool.get('chainValueZat', 0) or 0),
+        'chain_value': chain_pool.get('chainValue'),
+        'monitored': chain_pool.get('monitored', False),
+        'window_delta_zat': window_delta,
+        'sparkline_svg': sparkline_svg,
+        'recent_nonzero': recent_nonzero,
+        'window': POOL_HISTORY_WINDOW,
+    })
+
+
+@app.get('/z/verify')
+async def zcash_verify_view(request: Request, q: str = ''):
+    q = q.strip()
+    result = None
+    error = None
+    if q:
+        if len(q) != 64 or not all(c in '0123456789abcdef' for c in q.lower()):
+            error = 'txid must be 64 hex characters'
+        else:
+            tx = await safe_call_on('zcash', 'getrawtransaction', [q, 1])
+            if not tx:
+                error = 'transaction not found on zcash mainnet'
+            else:
+                flow = tx_value_flow(tx)
+                anchors = load_chain_registry('zap1-anchors.json', 'zcash')
+                zap1 = None
+                for entry in anchors:
+                    if entry.get('txid', '').lower() == q.lower() and entry.get('network') == 'zcash-mainnet':
+                        zap1 = dict(entry)
+                        zap1['event_label'] = ZAP1_EVENT_LABELS.get(zap1.get('event_type', '').lower(), 'unknown event')
+                        break
+                result = {
+                    'txid': q,
+                    'found': True,
+                    'block': {
+                        'hash': tx.get('blockhash'),
+                        'height': tx.get('height'),
+                        'time': tx.get('time'),
+                        'confirmations': tx.get('confirmations'),
+                    },
+                    'finality': {'tx': 'pow confirmations', 'block': 'pow confirmations'},
+                    'flow': flow,
+                    'zap1_anchor': zap1,
+                    'vault': None,
+                    'zeven_event': None,
+                    'size': tx.get('size'),
+                    'version': tx.get('version'),
+                }
+    return templates.TemplateResponse(request, 'zcash_verify.html', {
+        'request': request,
+        'chain': CHAINS['zcash'],
+        'q': q,
+        'result': result,
+        'error': error,
+    })
+
+
+@app.get('/favicon.ico')
+async def favicon():
+    return RedirectResponse(url='/static/favicon.svg', status_code=301)
 
 
 @app.get('/health')

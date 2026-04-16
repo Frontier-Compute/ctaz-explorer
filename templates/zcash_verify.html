@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}verify on zcash mainnet{% endblock %}
+{% block content %}
+<div class='page-head'>
+<h2>verify on zcash mainnet</h2>
+<span class='pool-tag pool-orchard'>{{ chain.short }}</span>
+</div>
+<p class='muted'>paste a zcash mainnet txid. get block, confirmations, pool usage, and zap1 registry matches. no bft finalization on mainnet, pow confirmations only.</p>
+
+<form action='/z/verify' method='get' class='search'>
+<input type='text' name='q' placeholder='64-char tx hash' value='{{ q or "" }}' autocomplete='off' spellcheck='false' aria-label='transaction hash'>
+<button type='submit'>verify</button>
+</form>
+
+{% if error %}
+<p class='muted' style='color:#a03333'>{{ error }}</p>
+{% endif %}
+
+{% if result %}
+<h3>verification result</h3>
+<dl class='detail'>
+<dt>txid</dt><dd class='hash'>{{ result.txid }}</dd>
+<dt>found</dt><dd>yes</dd>
+<dt>block</dt><dd class='hash'>{% if result.block.hash %}<a href='/z/block/{{ result.block.hash }}'>{{ result.block.hash }}</a>{% else %}<span class='muted'>mempool</span>{% endif %}</dd>
+{% if result.block.height is not none %}<dt>height</dt><dd>{{ result.block.height }}</dd>{% endif %}
+{% if result.block.confirmations is not none %}<dt>confirmations</dt><dd>{{ result.block.confirmations }}</dd>{% endif %}
+<dt>finality</dt><dd class='muted'>pow confirmations (no bft on mainnet)</dd>
+<dt>transparent out</dt><dd>{{ result.flow.transparent_out_zat | ctaz }} zec</dd>
+<dt>is coinbase</dt><dd>{{ 'yes' if result.flow.is_coinbase else 'no' }}</dd>
+<dt>is shielded</dt><dd>{{ 'yes' if result.flow.is_shielded else 'no' }}</dd>
+</dl>
+
+<h3>registry matches</h3>
+<dl class='detail'>
+<dt>zap1 anchor</dt><dd>{% if result.zap1_anchor %}<span class='badge badge-zap1'>{{ result.zap1_anchor.event_label }}</span> payload <code>{{ result.zap1_anchor.payload_hash | short }}</code>{% else %}no match{% endif %}</dd>
+</dl>
+
+<details>
+<summary class='muted'>raw json</summary>
+<pre style='overflow-x:auto;background:var(--card);border:1px solid var(--border);padding:12px;border-radius:6px;font-size:0.75rem;'>{{ result | tojson(indent=2) }}</pre>
+</details>
+{% endif %}
+
+<p class='muted'>ctaz verification at <a href='/verify'>/verify</a>. mainnet home at <a href='/z'>/z</a>.</p>
+{% endblock %}
