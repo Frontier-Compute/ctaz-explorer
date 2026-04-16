@@ -1142,3 +1142,104 @@ async def api_zcash_verify(txid: str):
             zap1["event_label"] = ZAP1_EVENT_LABELS.get(zap1.get("event_type", "").lower(), "unknown")
             break
     return {"chain": "zcash-mainnet", "txid": txid, "found": True, "flow": flow, "zap1_anchor": zap1}
+
+
+from fastapi.responses import PlainTextResponse, Response as FastAPIResponse
+from email.utils import format_datetime
+from datetime import datetime, timezone
+
+
+@app.get("/tip", response_class=PlainTextResponse)
+async def text_tip():
+    info = await safe_call("getinfo")
+    if not info:
+        raise HTTPException(status_code=503, detail="node not ready")
+    return str(info.get("blocks", 0))
+
+
+@app.get("/finalized", response_class=PlainTextResponse)
+async def text_finalized():
+    f = await safe_call("get_tfl_final_block_height_and_hash")
+    if not f:
+        return PlainTextResponse("0")
+    return str(f.get("height", 0))
+
+
+@app.get("/gap", response_class=PlainTextResponse)
+async def text_gap():
+    info, f = await asyncio.gather(
+        safe_call("getinfo"),
+        safe_call("get_tfl_final_block_height_and_hash"),
+    )
+    if not info:
+        raise HTTPException(status_code=503, detail="node not ready")
+    tip = info.get("blocks", 0)
+    finalized = f.get("height", 0) if f else 0
+    return str(tip - finalized)
+
+
+@app.get("/tip.z", response_class=PlainTextResponse)
+async def text_tip_zcash():
+    info = await safe_call_on("zcash", "getinfo")
+    if not info:
+        raise HTTPException(status_code=503, detail="zcash mainnet node not ready")
+    return str(info.get("blocks", 0))
+
+
+@app.get("/.well-known/explorer")
+async def well_known_explorer():
+    return {
+        "name": "ctaz-explorer",
+        "version": "v0.1.0",
+        "chains": ["ctaz-s1", "zcash-mainnet"],
+        "source": "https://github.com/Frontier-Compute/ctaz-explorer",
+        "license": "MIT",
+        "operator_pubkey": OPERATOR_FINALIZER_PUBKEY,
+        "operator_chain": "ctaz-s1",
+        "plain_text_endpoints": ["/tip", "/finalized", "/gap", "/tip.z"],
+        "feeds": ["/feed.xml"],
+        "api_base": "/api/",
+    }
+
+
+@app.get("/feed.xml")
+async def rss_feed():
+    info = await safe_call("getinfo")
+    if not info:
+        raise HTTPException(status_code=503, detail="node not ready")
+    tip = info.get("blocks", 0)
+    recent_raw = await asyncio.gather(
+        *[fetch_recent_block_with_finality(h) for h in range(max(0, tip - 19), tip + 1)]
+    )
+    recent = [b for b in recent_raw if b is not None]
+    items = []
+    for b in reversed(recent):
+        if b.get("time"):
+            pubdate = format_datetime(datetime.fromtimestamp(int(b["time"]), tz=timezone.utc))
+        else:
+            pubdate = ""
+        height = b["height"]
+        bhash = b["hash"]
+        finality = b["finality"]
+        tx_count = b["tx_count"]
+        item = (
+            "<item>"
+            f"<title>block {height} ({finality})</title>"
+            f"<link>https://ctaz.frontiercompute.cash/block/{height}</link>"
+            f"<guid>https://ctaz.frontiercompute.cash/block/{bhash}</guid>"
+            f"<pubDate>{pubdate}</pubDate>"
+            f"<description>{tx_count} tx, finality: {finality}</description>"
+            "</item>"
+        )
+        items.append(item)
+    body = "".join(items)
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<rss version="2.0"><channel>'
+        '<title>ctaz-explorer recent blocks</title>'
+        '<link>https://ctaz.frontiercompute.cash/</link>'
+        '<description>crosslink s1 feature net recent blocks</description>'
+        + body +
+        '</channel></rss>'
+    )
+    return FastAPIResponse(content=xml, media_type="application/rss+xml")
