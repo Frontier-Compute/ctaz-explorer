@@ -106,19 +106,20 @@ h3 {
 .search button:hover { background: #000; }
 .stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
-  margin: 14px 0 18px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  margin: 24px 0 32px;
 }
 @media (min-width: 720px) {
-  .stats { grid-template-columns: repeat(4, 1fr); }
+  .stats { grid-template-columns: repeat(3, 1fr); }
 }
 .stat {
   background: var(--card);
   border: 1px solid var(--border);
-  padding: 14px 16px;
-  border-radius: 6px;
+  padding: 22px 24px;
+  border-radius: 8px;
   transition: border-color 0.15s ease;
+  min-height: 78px;
 }
 .stat:hover { border-color: var(--border-hover); }
 .stat.shielded {
