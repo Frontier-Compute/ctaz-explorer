@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}zcash mainnet zap1 leaves{% endblock %}
+{% block content %}
+<div class='page-head'>
+<h2>zap1 leaves on zcash mainnet</h2>
+<span class='pool-tag pool-orchard'>{{ chain.short }}</span>
+</div>
+<p class='muted'>individual attestation events that compose the merkle roots at <a href='/z/anchors'>/z/anchors</a>. each leaf is a blake2b-256 hash of a typed event, personalization <code>NordicShield_</code>. {{ leaves | length }} leaves.</p>
+
+<h3>by event type</h3>
+<table class='pools'>
+<thead><tr><th>type</th><th>name</th><th>count</th></tr></thead>
+<tbody>
+{% for t, lfs in by_type %}
+<tr>
+<td><span class='pool-tag'>{{ t }}</span></td>
+<td>{{ event_labels.get(t, 'unknown') }}</td>
+<td>{{ lfs | length }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+<h3>leaves</h3>
+<table class='pools'>
+<thead><tr><th>id</th><th>event</th><th>serial</th><th>leaf hash</th><th>anchor</th></tr></thead>
+<tbody>
+{% for lf in leaves %}
+<tr>
+<td>{{ lf.id }}</td>
+<td><span class='pool-tag'>{{ lf.event_type }}</span> {{ event_labels.get(lf.event_type, lf.event_name or '') }}</td>
+<td class='muted'>{{ lf.serial_number or '—' }}</td>
+<td class='hash'>{{ lf.leaf_hash | short }}</td>
+<td class='hash'>{% if lf.anchor_txid %}<a href='/z/tx/{{ lf.anchor_txid }}'>{{ lf.anchor_txid | short }}</a>{% else %}<span class='muted'>unanchored</span>{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+<p class='muted'>json at <a href='/api/z/leaves'><code>/api/z/leaves</code></a>, lookup by hash at <a href='/api/z/leaf/&lt;hash&gt;'><code>/api/z/leaf/{leaf_hash}</code></a>.</p>
+{% endblock %}

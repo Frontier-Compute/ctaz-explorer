@@ -1243,3 +1243,39 @@ async def rss_feed():
         '</channel></rss>'
     )
     return FastAPIResponse(content=xml, media_type="application/rss+xml")
+
+
+@app.get("/z/leaves")
+async def zcash_leaves(request: Request):
+    leaves = load_chain_registry("zap1-leaves.json", "zcash")
+    by_type = {}
+    for lf in leaves:
+        t = lf.get("event_type", "??")
+        by_type.setdefault(t, []).append(lf)
+    return templates.TemplateResponse(request, "zcash_leaves.html", {
+        "request": request,
+        "chain": CHAINS["zcash"],
+        "leaves": leaves,
+        "by_type": sorted(by_type.items()),
+        "event_labels": ZAP1_EVENT_LABELS,
+    })
+
+
+@app.get("/api/z/leaves")
+async def api_zcash_leaves():
+    leaves = load_chain_registry("zap1-leaves.json", "zcash")
+    return {
+        "protocol": "ZAP1",
+        "network": "zcash-mainnet",
+        "count": len(leaves),
+        "leaves": leaves,
+    }
+
+
+@app.get("/api/z/leaf/{leaf_hash}")
+async def api_zcash_leaf(leaf_hash: str):
+    leaves = load_chain_registry("zap1-leaves.json", "zcash")
+    for lf in leaves:
+        if lf.get("leaf_hash", "").lower() == leaf_hash.lower():
+            return lf
+    return JSONResponse(status_code=404, content={"error": "leaf not found", "leaf_hash": leaf_hash})
