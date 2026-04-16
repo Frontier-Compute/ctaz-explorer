@@ -1,6 +1,6 @@
 # ctaz-explorer
 
-minimal open source block explorer for the crosslink season 1 feature net. renders live from a local zebrad node via json rpc. single python process, ~200 loc.
+minimal open source block explorer for the crosslink season 1 feature net. renders live from a local zebrad node via json rpc. single python process, ~1400 loc.
 
 ## what it shows
 
@@ -10,7 +10,7 @@ minimal open source block explorer for the crosslink season 1 feature net. rende
 * tx detail with inputs, outputs, finality status
 * address balance and recent txids
 * active finalizer roster sorted by voting power
-* /stake page with operator finalizer pub key and delegation instructions, per zooko's funding model
+* /stake page with operator finalizer pub key and delegation instructions
 
 ## run
 
@@ -30,7 +30,6 @@ getinfo, getblockchaininfo, getblockhash, getblock, getrawtransaction, getaddres
 ## notes
 
 * complement to cipherscan, not a replacement
-* built because zooko said someone should
 * not production hardened, expect rough edges
 * report issues at https://github.com/Frontier-Compute/ctaz-explorer/issues
 
