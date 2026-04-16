@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}zcash mainnet · ctaz-explorer{% endblock %}
+{% block content %}
+<div class='page-head'>
+<h2>zcash mainnet</h2>
+<span class='pool-tag pool-orchard'>{{ chain.short }}</span>
+</div>
+<p class='muted'>the ctaz-explorer rendering layer reads any zcash-family chain. this is read-only coverage of zcash mainnet over the local zebra rpc. no bft finalization applies here, mainnet uses the standard pow confirmations model.</p>
+
+<section class='stats'>
+  <div class='stat'><div class='label'>tip</div><div class='value'>{{ tip }}</div></div>
+  <div class='stat shielded'><div class='label'>orchard pool</div><div class='value'>{{ orchard }}<span class='unit'>zec</span></div></div>
+  <div class='stat'><div class='label'>transparent pool</div><div class='value'>{{ transparent }}<span class='unit'>zec</span></div></div>
+  <div class='stat'><div class='label'>sapling pool</div><div class='value'>{{ sapling }}<span class='unit'>zec</span></div></div>
+  <div class='stat'><div class='label'>lockbox</div><div class='value'>{{ lockbox }}<span class='unit'>zec</span></div></div>
+  <div class='stat'><div class='label'>p2p peers</div><div class='value'>{{ connections }}</div></div>
+  <div class='stat'><div class='label'>zebra build</div><div class='value' style='font-size:0.8rem'>{{ subversion or '—' }}</div></div>
+  <a href='/z/anchors' class='stat stat-link{% if anchor_count %} shielded{% endif %}'>
+  <div class='label'>zap1 anchors</div>
+  <div class='value'>{{ anchor_count }}</div>
+  </a>
+</section>
+
+<h2>recent blocks</h2>
+<table class='blocks'>
+<thead><tr><th>height</th><th>hash</th><th>tx</th><th>time</th></tr></thead>
+<tbody>
+{% for b in recent %}
+<tr>
+<td><a href='/z/block/{{ b.height }}'>{{ b.height }}</a></td>
+<td class='hash'><a href='/z/block/{{ b.hash }}'>{{ b.hash | short }}</a></td>
+<td>{{ b.tx_count }}</td>
+<td class='muted'>{{ b.time | ago }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% if anchors_preview %}
+<h2>recent zap1 anchors on mainnet</h2>
+<table class='pools'>
+<thead><tr><th>height</th><th>event</th><th>txid</th></tr></thead>
+<tbody>
+{% for a in anchors_preview %}
+<tr>
+<td>{% if a.block_height %}<a href='/z/block/{{ a.block_height }}'>{{ a.block_height }}</a>{% else %}<span class='muted'>—</span>{% endif %}</td>
+<td><span class='pool-tag pool-orchard'>{{ a.event_type }}</span> {{ a.event_label or '' }}</td>
+<td class='hash'><a href='/z/tx/{{ a.txid }}'>{{ a.txid | short }}</a></td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% endif %}
+
+<p class='muted'>crosslink s1 feature net coverage at <a href='/'>/</a>. json for this surface at <a href='/api/z/tip'>/api/z/tip</a> and <a href='/api/z/anchors'>/api/z/anchors</a>.</p>
+{% endblock %}

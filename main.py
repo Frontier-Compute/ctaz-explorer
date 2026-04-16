@@ -12,6 +12,31 @@ app = FastAPI(title='ctaz-explorer', docs_url=None, redoc_url=None)
 templates = Jinja2Templates(directory='templates')
 app.mount('/static', StaticFiles(directory='static'), name='static')
 rpc = ZebradRPC()
+rpc_zcash = ZebradRPC(url=os.environ.get('ZCASH_MAINNET_RPC_URL', 'http://127.0.0.1:8232'))
+
+CHAINS = {
+    'ctaz': {
+        'id': 'ctaz-s1',
+        'label': 'crosslink s1 feature net',
+        'short': 'cTAZ',
+        'rpc': rpc,
+        'unit': 'ctaz',
+        'has_bft': True,
+        'data_suffix': '',
+        'path_prefix': '',
+    },
+    'zcash': {
+        'id': 'zcash-mainnet',
+        'label': 'zcash mainnet',
+        'short': 'ZEC',
+        'rpc': rpc_zcash,
+        'unit': 'zec',
+        'has_bft': False,
+        'data_suffix': '-zcash',
+        'path_prefix': '/z',
+    },
+}
+templates.env.globals['CHAINS'] = CHAINS
 
 OPERATOR_FINALIZER_PUBKEY = '646ae0e999d5c1d0f69bce3aaf5f5a71537bbc964c270a88f772592d79e14061'
 
@@ -137,6 +162,29 @@ async def safe_call(method, params=None):
         return await rpc.call(method, params)
     except Exception:
         return None
+
+
+async def safe_call_on(chain_key: str, method, params=None):
+    chain = CHAINS.get(chain_key)
+    if not chain:
+        return None
+    try:
+        return await chain['rpc'].call(method, params)
+    except Exception:
+        return None
+
+
+def load_chain_registry(name: str, chain_key: str):
+    suffix = CHAINS.get(chain_key, {}).get('data_suffix', '')
+    base = name.replace('.json', '')
+    path = DATA_DIR / f'{base}{suffix}.json'
+    try:
+        with path.open('r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []
+    except Exception:
+        return []
 
 
 @app.exception_handler(Exception)
@@ -631,6 +679,150 @@ async def search(request: Request, q: str = ''):
     if q.startswith(('t1', 't2', 't3', 'tm', 'u1', 'utest', 'zs', 'ztestsapling')):
         return RedirectResponse(url=f'/address/{q}')
     return RedirectResponse(url='/')
+
+
+@app.get('/z')
+async def zcash_home(request: Request):
+    info, chaininfo = await asyncio.gather(
+        safe_call_on('zcash', 'getinfo'),
+        safe_call_on('zcash', 'getblockchaininfo'),
+    )
+    if not info or not chaininfo:
+        raise HTTPException(status_code=503, detail='zcash mainnet node not ready')
+    tip = info['blocks']
+    recent_heights = list(range(max(0, tip - 9), tip + 1))
+    async def fetch_zcash_block(h):
+        h_hash = await safe_call_on('zcash', 'getblockhash', [h])
+        if not h_hash:
+            return None
+        block = await safe_call_on('zcash', 'getblock', [h_hash, 1])
+        if not block:
+            return None
+        return {
+            'height': h,
+            'hash': h_hash,
+            'tx_count': len(block.get('tx', [])),
+            'time': block.get('time'),
+        }
+    recent_raw = await asyncio.gather(*[fetch_zcash_block(h) for h in recent_heights])
+    recent = [b for b in recent_raw if b is not None]
+    pools = {p['id']: p for p in chaininfo.get('valuePools', [])}
+    orchard = pools.get('orchard', {}).get('chainValue', 0)
+    transparent = pools.get('transparent', {}).get('chainValue', 0)
+    sapling = pools.get('sapling', {}).get('chainValue', 0)
+    lockbox = pools.get('lockbox', {}).get('chainValue', 0)
+    anchors = [e for e in load_chain_registry('zap1-anchors.json', 'zcash') if e.get('network') == 'zcash-mainnet']
+    return templates.TemplateResponse(request, 'zcash_home.html', {
+        'request': request,
+        'chain': CHAINS['zcash'],
+        'tip': tip,
+        'connections': info.get('connections', 0),
+        'subversion': info.get('subversion', ''),
+        'chaininfo': chaininfo,
+        'orchard': orchard,
+        'transparent': transparent,
+        'sapling': sapling,
+        'lockbox': lockbox,
+        'recent': list(reversed(recent)),
+        'anchor_count': len(anchors),
+        'anchors_preview': anchors[:5],
+    })
+
+
+@app.get('/z/block/{hash_or_height}')
+async def zcash_block(request: Request, hash_or_height: str):
+    if hash_or_height.isdigit():
+        h_hash = await safe_call_on('zcash', 'getblockhash', [int(hash_or_height)])
+    else:
+        h_hash = hash_or_height
+    if not h_hash:
+        raise HTTPException(status_code=404, detail='block not found on zcash mainnet')
+    block = await safe_call_on('zcash', 'getblock', [h_hash, 1])
+    if not block:
+        raise HTTPException(status_code=404, detail='block not found on zcash mainnet')
+    height = block.get('height')
+    next_hash = None
+    if height is not None:
+        next_hash = await safe_call_on('zcash', 'getblockhash', [height + 1])
+    pool_deltas = []
+    for p in block.get('valuePools', []) or []:
+        delta = int(p.get('valueDeltaZat', 0) or 0)
+        if delta != 0 or p.get('monitored'):
+            pool_deltas.append({
+                'id': p.get('id'),
+                'delta_zat': delta,
+                'total_zat': int(p.get('chainValueZat', 0) or 0),
+            })
+    return templates.TemplateResponse(request, 'zcash_block.html', {
+        'request': request,
+        'chain': CHAINS['zcash'],
+        'block': block,
+        'next_hash': next_hash,
+        'pool_deltas': pool_deltas,
+    })
+
+
+@app.get('/z/tx/{txid}')
+async def zcash_tx(request: Request, txid: str):
+    tx = await safe_call_on('zcash', 'getrawtransaction', [txid, 1])
+    if not tx:
+        raise HTTPException(status_code=404, detail='transaction not found on zcash mainnet')
+    flow = tx_value_flow(tx)
+    anchors = load_chain_registry('zap1-anchors.json', 'zcash')
+    zap1_anchor = None
+    for entry in anchors:
+        if entry.get('txid', '').lower() == txid.lower() and entry.get('network') == 'zcash-mainnet':
+            zap1_anchor = dict(entry)
+            zap1_anchor['event_label'] = ZAP1_EVENT_LABELS.get(zap1_anchor.get('event_type', '').lower(), 'unknown event')
+            break
+    return templates.TemplateResponse(request, 'zcash_tx.html', {
+        'request': request,
+        'chain': CHAINS['zcash'],
+        'tx': tx,
+        'txid': txid,
+        'flow': flow,
+        'zap1_anchor': zap1_anchor,
+    })
+
+
+@app.get('/z/anchors')
+async def zcash_anchors(request: Request):
+    registry = [e for e in load_chain_registry('zap1-anchors.json', 'zcash') if e.get('network') == 'zcash-mainnet']
+    for e in registry:
+        e['event_label'] = ZAP1_EVENT_LABELS.get(e.get('event_type', '').lower(), 'unknown event')
+    registry.sort(key=lambda e: int(e.get('block_height') or 0), reverse=True)
+    return templates.TemplateResponse(request, 'zcash_anchors.html', {
+        'request': request,
+        'chain': CHAINS['zcash'],
+        'anchors': registry,
+        'event_labels': ZAP1_EVENT_LABELS,
+    })
+
+
+@app.get('/api/z/tip')
+async def api_zcash_tip():
+    info = await safe_call_on('zcash', 'getinfo')
+    if not info:
+        return JSONResponse(status_code=503, content={'error': 'zcash mainnet node not ready'})
+    return {
+        'chain': 'zcash-mainnet',
+        'tip': info.get('blocks'),
+        'subversion': info.get('subversion'),
+        'connections': info.get('connections', 0),
+    }
+
+
+@app.get('/api/z/anchors')
+async def api_zcash_anchors():
+    registry = [e for e in load_chain_registry('zap1-anchors.json', 'zcash') if e.get('network') == 'zcash-mainnet']
+    registry.sort(key=lambda e: int(e.get('block_height') or 0), reverse=True)
+    return {
+        'protocol': 'ZAP1',
+        'network': 'zcash-mainnet',
+        'count': len(registry),
+        'event_types_supported': ZAP1_EVENT_LABELS,
+        'anchors': registry,
+    }
 
 
 @app.get('/health')

@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}zcash mainnet block {{ block.height }}{% endblock %}
+{% block content %}
+<div class='page-head'>
+<h2>zcash mainnet block <span class='mono'>{{ block.height }}</span></h2>
+<span class='pool-tag pool-orchard'>{{ chain.short }}</span>
+</div>
+
+<nav class='blocknav'>
+{% if block.previousblockhash %}<a href='/z/block/{{ block.previousblockhash }}'>← prev</a>{% else %}<span class='muted'>← prev</span>{% endif %}
+<span class='muted'>height {{ block.height }}</span>
+{% if next_hash %}<a href='/z/block/{{ next_hash }}'>next →</a>{% else %}<span class='muted'>next →</span>{% endif %}
+</nav>
+
+<dl class='detail'>
+<dt>hash</dt><dd class='hash'>{{ block.hash }}</dd>
+<dt>time</dt><dd>{{ block.time | ago }} <span class='muted'>(unix {{ block.time }})</span></dd>
+<dt>size</dt><dd>{{ block.size | hsize }} <span class='muted'>({{ block.size }} bytes)</span></dd>
+<dt>confirmations</dt><dd>{{ block.confirmations }}</dd>
+<dt>difficulty</dt><dd>{{ block.difficulty }}</dd>
+<dt>version</dt><dd>{{ block.version }}</dd>
+<dt>merkle root</dt><dd class='hash'>{{ block.merkleroot }}</dd>
+{% if block.finalorchardroot %}<dt>orchard root</dt><dd class='hash'>{{ block.finalorchardroot }}</dd>{% endif %}
+{% if block.finalsaplingroot %}<dt>sapling root</dt><dd class='hash'>{{ block.finalsaplingroot }}</dd>{% endif %}
+<dt>prev</dt><dd class='hash'>{% if block.previousblockhash %}<a href='/z/block/{{ block.previousblockhash }}'>{{ block.previousblockhash }}</a>{% else %}—{% endif %}</dd>
+</dl>
+
+{% if pool_deltas %}
+<h3>pool flow in this block</h3>
+<table class='pools'>
+<thead><tr><th>pool</th><th class='num'>delta</th><th class='num'>chain total</th></tr></thead>
+<tbody>
+{% for p in pool_deltas %}
+<tr>
+<td><span class='pool-tag pool-{{ p.id }}'>{{ p.id }}</span></td>
+<td class='num {% if p.delta_zat > 0 %}pos{% elif p.delta_zat < 0 %}neg{% endif %}'>{% if p.delta_zat > 0 %}+{% endif %}{{ p.delta_zat | ctaz }} zec</td>
+<td class='num muted'>{{ p.total_zat | ctaz }} zec</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% endif %}
+
+<h3>transactions ({{ block.tx | length }})</h3>
+<ul class='txlist'>
+{% for txid in block.tx[:100] %}
+<li class='hash'><a href='/z/tx/{{ txid }}'>{{ txid }}</a></li>
+{% endfor %}
+</ul>
+{% if block.tx | length > 100 %}<p class='muted'>{{ block.tx | length - 100 }} more transactions not shown</p>{% endif %}
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}zcash mainnet tx {{ txid[:16] }}…{% endblock %}
+{% block content %}
+<div class='page-head'>
+<h2>zcash mainnet transaction</h2>
+<span class='pool-tag pool-orchard'>{{ chain.short }}</span>
+{% if zap1_anchor %}<span class='badge badge-zap1'>zap1 {{ zap1_anchor.event_label }}</span>{% endif %}
+</div>
+
+<p class='hash big'>{{ txid }}</p>
+
+{% if zap1_anchor %}
+<div class='card card-zap1'>
+<div class='card-head'>
+<span class='card-title'>zap1 attestation anchor on zcash mainnet</span>
+<span class='pool-tag pool-orchard'>{{ zap1_anchor.event_type }} {{ zap1_anchor.event_label }}</span>
+</div>
+<dl class='card-body'>
+<dt>event type</dt><dd><code>0x{{ zap1_anchor.event_type }}</code> {{ zap1_anchor.event_label }}</dd>
+<dt>payload hash</dt><dd class='hash'>{{ zap1_anchor.payload_hash }}</dd>
+{% if zap1_anchor.block_height %}<dt>anchored at height</dt><dd><a href='/z/block/{{ zap1_anchor.block_height }}'>{{ zap1_anchor.block_height }}</a></dd>{% endif %}
+{% if zap1_anchor.note %}<dt>note</dt><dd class='muted'>{{ zap1_anchor.note }}</dd>{% endif %}
+</dl>
+<p class='muted card-foot'>verify by running <code>blake2b-256(NordicShield_, inputs)</code> per event schema, then comparing against payload hash above. protocol spec at <a href='https://github.com/Frontier-Compute/zap1' target='_blank' rel='noopener'>github.com/Frontier-Compute/zap1</a>.</p>
+</div>
+{% endif %}
+
+<div class='flow'>
+<div class='flow-cell {% if flow.is_coinbase %}highlight{% endif %}'>
+<div class='flow-label'>inputs</div>
+<div class='flow-value'>{% if flow.is_coinbase %}coinbase{% else %}{{ tx.vin | length }} transparent{% endif %}</div>
+</div>
+<div class='flow-arrow'>→</div>
+<div class='flow-cell'>
+<div class='flow-label'>transparent out</div>
+<div class='flow-value'>{{ flow.transparent_out_zat | ctaz }} zec</div>
+<div class='flow-sub muted'>{{ tx.vout | length }} output{% if tx.vout | length != 1 %}s{% endif %}</div>
+</div>
+{% if flow.is_shielded %}
+<div class='flow-arrow'>+</div>
+<div class='flow-cell shielded'>
+<div class='flow-label'>shielded</div>
+<div class='flow-value'>{% if flow.orchard_actions %}{{ flow.orchard_actions }} orchard{% endif %}{% if flow.sapling_spend or flow.sapling_output %}{% if flow.orchard_actions %}<br>{% endif %}{{ flow.sapling_spend }}→{{ flow.sapling_output }} sapling{% endif %}</div>
+</div>
+{% endif %}
+</div>
+
+<dl class='detail'>
+<dt>size</dt><dd>{{ tx.size if tx.size is defined else '—' }} bytes</dd>
+<dt>version</dt><dd>{{ tx.version if tx.version is defined else '—' }}</dd>
+{% if tx.blockhash %}<dt>block</dt><dd class='hash'><a href='/z/block/{{ tx.blockhash }}'>{{ tx.blockhash }}</a></dd>{% endif %}
+{% if tx.time %}<dt>time</dt><dd>{{ tx.time | ago }} <span class='muted'>(unix {{ tx.time }})</span></dd>{% endif %}
+{% if tx.confirmations is defined %}<dt>confirmations</dt><dd>{{ tx.confirmations }}</dd>{% endif %}
+</dl>
+
+<p class='muted'>crosslink s1 coverage at <a href='/'>/</a>. mainnet home at <a href='/z'>/z</a>.</p>
+{% endblock %}
