@@ -2,19 +2,15 @@
 {% block title %}ctaz-explorer{% endblock %}
 {% block content %}
 
-<section class='hero'>
-<div class='hero-label'>tip</div>
-<div class='hero-number'>{{ tip }}</div>
-<div class='hero-line'>
-<span>finalized {% if finalized_height is not none %}{{ finalized_height }}{% else %}—{% endif %}</span>
-<span class='sep'>·</span>
-<span>gap {% if finality_gap is not none %}{{ finality_gap }}{% else %}—{% endif %} blocks</span>
-<span class='sep'>·</span>
-<span>{{ roster | length }} finalizers</span>
-<span class='sep'>·</span>
-<span>{{ connections }} peers</span>
-</div>
-</section>
+<pre class='status'>chain       crosslink season 1 feature net
+tip         {{ tip }}
+finalized   {% if finalized_height is not none %}{{ finalized_height }}{% else %}—{% endif %}
+gap         {% if finality_gap is not none %}{{ finality_gap }} blocks{% else %}—{% endif %}
+finalizers  {{ roster | length }} active, {{ total_vp | ctaz }} ctaz staked
+peers       {{ connections }}
+orchard     {{ orchard }} ctaz
+transparent {{ transparent }} ctaz
+registries  {{ anchor_count }} zap1 anchors, {{ vault_count }} vaults, {{ event_count }} events</pre>
 
 <h2>recent blocks</h2>
 <table class='blocks'>
@@ -31,10 +27,5 @@
 {% endfor %}
 </tbody>
 </table>
-
-<p class='aside'>
-pools: <a href='/pool/orchard'>orchard</a> {{ orchard }}, <a href='/pool/transparent'>transparent</a> {{ transparent }}, stake {{ total_vp | ctaz }} ctaz.<br>
-registries: <a href='/anchors'>anchors</a> {{ anchor_count }}, <a href='/vaults'>vaults</a> {{ vault_count }}, <a href='/events'>events</a> {{ event_count }}.
-</p>
 
 {% endblock %}

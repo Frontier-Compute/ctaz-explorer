@@ -662,3 +662,22 @@ a:hover { color: var(--fg); }
 table.blocks th, table.blocks td {
   padding: 13px 16px;
 }
+
+/* status block: terminal-output aesthetic, left-aligned, no drama */
+pre.status {
+  font-family: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', ui-monospace, Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.8;
+  color: var(--fg);
+  background: transparent;
+  border: none;
+  padding: 20px 0 8px;
+  margin: 20px 0 30px;
+  white-space: pre;
+  overflow-x: auto;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.005em;
+}
+
+/* unset hero styles from earlier attempt */
+.hero, .hero-label, .hero-number, .hero-line { display: none; }
