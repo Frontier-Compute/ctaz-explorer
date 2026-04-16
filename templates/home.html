@@ -2,20 +2,25 @@
 {% block title %}ctaz-explorer{% endblock %}
 {% block content %}
 
-<p class='lead'>crosslink season 1 feature net. shielded zcash with a bft finality layer on top of proof of work. read-only, mit source, no analytics, no cookies, no auth.</p>
+<section class='intro'>
+<h1>ctaz-explorer</h1>
+<p class='lead'>a zcash crosslink season 1 feature net explorer. shielded-first, mit source, no analytics, no cookies, no auth, no rate limit.</p>
+</section>
 
-<pre class='status'>tip         {{ tip }}
-finalized   {% if finalized_height is not none %}{{ finalized_height }}{% else %}—{% endif %}
-gap         {% if finality_gap is not none %}{{ finality_gap }} blocks behind finality, expected on a young feature net{% else %}—{% endif %}
-orchard     {{ orchard | fmt2 }} ctaz
-transparent {{ transparent | fmt2 }} ctaz
-finalizers  {{ roster | length }} active, {{ (total_vp / 100000000) | fmt2 }} ctaz staked
-peers       {{ connections }}
-registries  {{ anchor_count }} zap1 anchors, {{ vault_count }} vaults, {{ event_count }} events</pre>
+<section>
+<h2>state</h2>
+<pre class='status'>tip              {{ tip }}
+finalized        {% if finalized_height is not none %}{{ finalized_height }}{% else %}—{% endif %}
+gap              {% if finality_gap is not none %}{{ finality_gap }} blocks{% else %}—{% endif %}
+orchard pool     {{ orchard | fmt2 }} ctaz
+transparent      {{ transparent | fmt2 }} ctaz
+finalizers       {{ roster | length }} active, {{ (total_vp / 100000000) | fmt2 }} ctaz staked
+peers            {{ connections }}
+zap1 anchors     {{ anchor_count }}</pre>
+</section>
 
-<p class='operator'>the operator runs finalizer <code>{{ operator_pubkey }}</code>. delegate at <a href='/stake'>/stake</a> to fund explorer operations.</p>
-
-<h2>recent blocks</h2>
+<section>
+<h2>latest blocks</h2>
 <table class='blocks'>
 <thead><tr><th>height</th><th>hash</th><th>tx</th><th>finality</th><th>age</th></tr></thead>
 <tbody>
@@ -30,7 +35,16 @@ registries  {{ anchor_count }} zap1 anchors, {{ vault_count }} vaults, {{ event_
 {% endfor %}
 </tbody>
 </table>
+</section>
 
-<p class='verbs'>verify any txid at <a href='/verify'>/verify</a>. merkle path printer at <code>/tx/&lt;txid&gt;/merkle.txt</code>. pool flow at <a href='/pool/orchard'>/pool/orchard</a>. protocol parameters at <a href='/params'>/params</a>.</p>
+<section>
+<h2>verify</h2>
+<p class='section-body'>paste a txid at <a href='/verify'>/verify</a> for block, finality, and pool flow. curl <code>/tx/&lt;txid&gt;/merkle.txt</code> for the merkle path in plain text. pool movement at <a href='/pool/orchard'>/pool/orchard</a>. protocol parameters at <a href='/params'>/params</a>.</p>
+</section>
+
+<section>
+<h2>operator</h2>
+<p class='section-body'>this explorer runs finalizer <code class='fpk'>{{ operator_pubkey }}</code>. delegate at <a href='/stake'>/stake</a> to fund operations under the season 1 protocol-guardian funding model.</p>
+</section>
 
 {% endblock %}

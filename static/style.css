@@ -734,3 +734,92 @@ pre.status {
 pre.status {
   margin: 8px 0 24px;
 }
+
+/* structural pass: sectioned, clean, each part earns its place */
+
+section {
+  margin: 0 0 44px;
+}
+section.intro {
+  margin: 24px 0 52px;
+}
+
+h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0 0 10px;
+  letter-spacing: -0.028em;
+  color: var(--fg);
+}
+
+.lead {
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: var(--fg-muted);
+  margin: 0;
+  max-width: 62ch;
+  letter-spacing: -0.003em;
+}
+
+/* h2 now marks sections, tighter than before */
+h2 {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  color: var(--fg);
+  margin: 0 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* status block: monospace, left-aligned, breathing */
+pre.status {
+  font-family: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', ui-monospace, Consolas, monospace;
+  font-size: 0.88rem;
+  line-height: 1.85;
+  color: var(--fg);
+  background: transparent;
+  border: none;
+  padding: 4px 0;
+  margin: 0;
+  white-space: pre;
+  overflow-x: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* section body: prose, muted but readable */
+.section-body {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--fg-muted);
+  margin: 0;
+  max-width: 62ch;
+}
+.section-body a {
+  color: var(--accent-dim);
+  text-decoration: underline;
+  text-decoration-color: rgba(154, 111, 26, 0.35);
+  text-underline-offset: 2px;
+}
+.section-body a:hover {
+  color: var(--fg);
+  text-decoration-color: rgba(154, 111, 26, 0.9);
+}
+.section-body code {
+  font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  font-size: 0.82rem;
+  color: var(--fg-muted);
+  background: transparent;
+}
+
+/* finalizer pubkey inline: distinctive but not loud */
+code.fpk {
+  display: inline-block;
+  word-break: break-all;
+  font-size: 0.76rem;
+  color: #5c4110;
+}
+
+/* hide legacy hero/banner if still present somewhere */
+.hero, .hero-label, .hero-number, .hero-line, .banner, .operator, .verbs, .aside { display: none; }
