@@ -1,55 +1,27 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% block title %}ctaz-explorer · chain{% endblock %}
 {% block content %}
-<section class='stats'>
-  <div class='stat'><div class='label'>tip</div><div class='value'>{{ tip }}</div></div>
-  <div class='stat'><div class='label'>finalized</div><div class='value'>{% if finalized_height is not none %}{{ finalized_height }}{% else %}—{% endif %}</div></div>
-  <div class='stat'><div class='label'>finality gap</div><div class='value'>{% if finality_gap is not none %}{{ finality_gap }}{% else %}—{% endif %}<span class='unit'>blocks</span></div></div>
-  <a href='/pool/orchard' class='stat shielded stat-link'><div class='label'>shielded (orchard)</div><div class='value'>{{ orchard }}<span class='unit'>ctaz</span></div></a>
-  <a href='/pool/transparent' class='stat stat-link'><div class='label'>transparent</div><div class='value'>{{ transparent }}<span class='unit'>ctaz</span></div></a>
-  <a href='/finalizers' class='stat stat-link'><div class='label'>finalizers</div><div class='value'>{{ roster | length }}</div></a>
-  <div class='stat'><div class='label'>p2p peers</div><div class='value'>{{ connections }}</div></div>
-  <div class='stat'><div class='label'>stake total</div><div class='value'>{{ total_vp | ctaz }}<span class='unit'>ctaz</span></div></div>
+<section class="stats">
+  <div class="stat"><div class="label">tip</div><div class="value">{{ tip }}</div></div>
+  <div class="stat"><div class="label">finalized</div><div class="value">{% if finalized and finalized.height is defined %}{{ finalized.height }}{% else %}—{% endif %}</div></div>
+  <div class="stat"><div class="label">supply</div><div class="value">{{ chaininfo.chainSupply.chainValue }}<span class="unit">ctaz</span></div></div>
+  <div class="stat"><div class="label">finalizers</div><div class="value">{{ roster | length }}</div></div>
+  <div class="stat"><div class="label">peers</div><div class="value">{{ connections }}</div></div>
+  <div class="stat"><div class="label">stake total</div><div class="value">{{ total_vp | ctaz }}<span class="unit">ctaz</span></div></div>
 </section>
 
-<div class='banner'>
-<span>zooko said someone should. explorer built in a day, <a href='/why'>why</a>. delegate to support the operator at <a href='/stake'>/stake</a>. everything verifiable at <a href='/verify'>/verify</a>.</span>
-</div>
-
 <h2>recent blocks</h2>
-<table class='blocks'>
-<thead><tr><th>height</th><th>hash</th><th>tx</th><th>finality</th><th>time</th></tr></thead>
+<table class="blocks">
+<thead><tr><th>height</th><th>hash</th><th>tx</th><th>time</th></tr></thead>
 <tbody>
 {% for b in recent %}
 <tr>
-<td><a href='/block/{{ b.height }}'>{{ b.height }}</a></td>
-<td class='hash'><a href='/block/{{ b.hash }}'>{{ b.hash | short }}</a></td>
+<td><a href="/block/{{ b.height }}">{{ b.height }}</a></td>
+<td class="hash"><a href="/block/{{ b.hash }}">{{ b.hash[:16] }}…</a></td>
 <td>{{ b.tx_count }}</td>
-<td><span class='finality small {{ b.finality | fincls }}'>{{ b.finality | finlbl }}</span></td>
-<td class='muted'>{{ b.time | ago }}</td>
+<td class="muted">{{ b.time }}</td>
 </tr>
 {% endfor %}
 </tbody>
 </table>
-
-<h2>stack surfaces on ctaz</h2>
-<section class='stats'>
-<a href='/anchors' class='stat stat-link{% if anchor_count %} shielded{% endif %}'>
-<div class='label'>zap1 anchors</div>
-<div class='value'>{{ anchor_count }}</div>
-</a>
-<a href='/vaults' class='stat stat-link'>
-<div class='label'>shieldedvault agents</div>
-<div class='value'>{{ vault_count }}</div>
-</a>
-<a href='/events' class='stat stat-link'>
-<div class='label'>zeven events</div>
-<div class='value'>{{ event_count }}</div>
-</a>
-<a href='/params' class='stat stat-link'>
-<div class='label'>protocol params</div>
-<div class='value'>→</div>
-</a>
-</section>
-<p class='muted'>the attestation registries on ctaz start empty and populate as real ctaz transactions land. rendering plumbing is live; nothing is asserted until an on-chain anchor exists. the same surfaces run in production on zcash mainnet.</p>
 {% endblock %}
