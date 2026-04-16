@@ -14,6 +14,25 @@ app.mount('/static', StaticFiles(directory='static'), name='static')
 rpc = ZebradRPC()
 rpc_zcash = ZebradRPC(url=os.environ.get('ZCASH_MAINNET_RPC_URL', 'http://127.0.0.1:8232'))
 
+
+NO_STORE_PREFIXES = (
+    '/api/', '/block/', '/tx/', '/verify', '/finalizers',
+    '/anchors', '/vaults', '/events', '/params', '/tfl',
+    '/tip', '/finalized', '/gap', '/feed.xml',
+    '/.well-known/explorer', '/z/', '/tip.z',
+)
+
+
+@app.middleware('http')
+async def no_store_live_surfaces(request: Request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path in {'/', '/z', '/robots.txt', '/sitemap.xml'} or any(path.startswith(p) for p in NO_STORE_PREFIXES):
+        response.headers['Cache-Control'] = 'no-store'
+        response.headers['X-Robots-Tag'] = 'noarchive'
+    return response
+
+
 CHAINS = {
     'ctaz': {
         'id': 'ctaz-s1',
@@ -1279,3 +1298,100 @@ async def api_zcash_leaf(leaf_hash: str):
         if lf.get("leaf_hash", "").lower() == leaf_hash.lower():
             return lf
     return JSONResponse(status_code=404, content={"error": "leaf not found", "leaf_hash": leaf_hash})
+
+import hashlib as _hashlib_merkle
+
+
+def _dsha256(payload: bytes) -> bytes:
+    return _hashlib_merkle.sha256(_hashlib_merkle.sha256(payload).digest()).digest()
+
+
+def _merkle_path(txids: list, txid: str):
+    level = [bytes.fromhex(t)[::-1] for t in txids]
+    target = bytes.fromhex(txid)[::-1]
+    if target not in level:
+        return None
+    idx = level.index(target)
+    path = []
+    depth = 0
+    while len(level) > 1:
+        if len(level) & 1:
+            level = level + [level[-1]]
+        sibling_idx = idx ^ 1
+        sibling = level[sibling_idx]
+        side = 'left' if sibling_idx < idx else 'right'
+        path.append((depth, side, sibling[::-1].hex()))
+        level = [_dsha256(level[i] + level[i + 1]) for i in range(0, len(level), 2)]
+        idx //= 2
+        depth += 1
+    return path, level[0][::-1].hex()
+
+
+async def _merkle_text(chain_key: str, txid: str):
+    tx = await safe_call_on(chain_key, 'getrawtransaction', [txid, 1])
+    if not tx or not tx.get('blockhash'):
+        raise HTTPException(status_code=404, detail='transaction not anchored in a block')
+    block = await safe_call_on(chain_key, 'getblock', [tx['blockhash'], 1])
+    if not block:
+        raise HTTPException(status_code=404, detail='block not found')
+    proof = _merkle_path(block.get('tx', []), txid)
+    if not proof:
+        raise HTTPException(status_code=404, detail='txid missing from block tx list')
+    path, computed = proof
+    lines = [
+        'txid: ' + txid,
+        'block: ' + block.get('hash', ''),
+        'height: ' + str(block.get('height', '-')),
+        'merkleroot: ' + str(block.get('merkleroot', '')),
+        'computed: ' + computed,
+        'path:',
+    ]
+    for depth, side, sibling in path:
+        lines.append('  L' + str(depth) + ' ' + side + ' ' + sibling)
+    return '\n'.join(lines)
+
+
+
+
+@app.get('/robots.txt', response_class=PlainTextResponse)
+async def robots_txt_route():
+    body = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Sitemap: https://ctaz.frontiercompute.cash/sitemap.xml\n"
+    )
+    return PlainTextResponse(body)
+
+
+@app.get('/sitemap.xml')
+async def sitemap_xml():
+    urls = [
+        '/', '/z', '/finalizers', '/anchors', '/vaults', '/events',
+        '/verify', '/params', '/why', '/stake',
+        '/pool/orchard', '/pool/transparent', '/pool/sapling', '/pool/sprout', '/pool/lockbox',
+        '/z/anchors', '/z/leaves', '/z/pool/orchard', '/z/verify',
+        '/feed.xml', '/.well-known/explorer',
+        '/tip', '/finalized', '/gap', '/tip.z',
+    ]
+    body = ''.join(
+        '<url><loc>https://ctaz.frontiercompute.cash' + p + '</loc></url>'
+        for p in urls
+    )
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        + body +
+        '</urlset>'
+    )
+    return FastAPIResponse(content=xml, media_type='application/xml')
+
+
+@app.get('/tx/{txid}/merkle.txt', response_class=PlainTextResponse)
+async def tx_merkle_text_route(txid: str):
+    return PlainTextResponse(await _merkle_text('ctaz', txid))
+
+
+@app.get('/z/tx/{txid}/merkle.txt', response_class=PlainTextResponse)
+async def zcash_merkle_text_route(txid: str):
+    return PlainTextResponse(await _merkle_text('zcash', txid))
+
