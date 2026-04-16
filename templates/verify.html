@@ -32,7 +32,7 @@
 <h3>stack registry matches</h3>
 <dl class='detail'>
 <dt>zap1 anchor</dt><dd>{% if result.zap1_anchor %}<span class='badge badge-zap1'>{{ result.zap1_anchor.event_label }}</span> payload <code>{{ result.zap1_anchor.payload_hash | short }}</code>{% else %}no match in registry{% endif %}</dd>
-<dt>shieldedvault</dt><dd>{% if result.vault %}<span class='badge badge-vault'>{{ result.vault.vault_id }}</span>{% else %}no match in registry{% endif %}</dd>
+<dt>shieldedvault</dt><dd class="muted">stub, tx-addressable vault matching not yet implemented</dd>
 <dt>zeven event</dt><dd>{% if result.zeven_event %}<span class='badge badge-zeven'>{{ result.zeven_event.kind }}</span>{% else %}no match in registry{% endif %}</dd>
 </dl>
 

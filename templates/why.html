@@ -7,7 +7,7 @@
 
 <h3>what this is not</h3>
 
-<p>this is not a product. there is no account, no login, no payment wall, no rate limit, no api key, no referral program, no javascript bundle, no cross origin beacon, no captcha. there is a fastapi process behind nginx. the source is 500 lines of python plus a few jinja templates. it is small on purpose.</p>
+<p>this is not a product. there is no account, no login, no payment wall, no rate limit, no api key, no referral program, no javascript bundle, no cross origin beacon, no captcha. there is a fastapi process behind nginx. the source is python and jinja templates behind nginx. it is small on purpose.</p>
 
 <h3>what the node is doing</h3>
 
@@ -17,7 +17,7 @@
 
 <ul>
 <li><strong>finality badges</strong>: every block and every transaction is tagged bft-finalized or pow-only based on <code>get_tfl_block_finality_from_hash</code>. the finality gap between pow tip and bft tip is always visible on the home page. the gap is almost always large. that is an honest signal about where s1 tfl currently lives.</li>
-<li><strong>per-block pool deltas</strong>: the transparent, orchard, sapling, sprout, and lockbox pools each show their delta on the block page. the <a href='/pool/orchard'>pool pages</a> render a server-side svg sparkline of cumulative value over the last 200 blocks. no other explorer on crosslink shows per-block pool flow, not because it is hard but because nobody has written it yet.</li>
+<li><strong>per-block pool deltas</strong>: the transparent, orchard, sapling, sprout, and lockbox pools each show their delta on the block page. the <a href='/pool/orchard'>pool pages</a> render a server-side svg sparkline of cumulative value over the last 200 blocks. the pool pages render a server-side svg sparkline of cumulative value over the last 200 blocks.</li>
 <li><strong>attestation registries</strong>: <a href='/anchors'>/anchors</a> lists zap1 attestation anchors on ctaz. <a href='/vaults'>/vaults</a> lists shieldedvault custody agents. <a href='/events'>/events</a> lists zeven watcher events. the registries are public json files in the repo, the explorer reads them at request time, and matches against the requested txid to render an attestation card on the transaction page. if a txid is not in a registry, nothing special happens. the registries on ctaz start empty and populate as real cTAZ transactions land. none of this is asserted by the explorer; everything is verifiable against the chain directly.</li>
 <li><strong>/verify</strong>: paste a txid at <a href='/verify'>/verify</a>, get back block, finality, pool usage, and registry matches in one shot. curl friendly via <code>/api/verify/&lt;txid&gt;</code>. no auth, no rate limit.</li>
 <li><strong>/params</strong>: honest protocol parameters from the node, including the parameters that are still stub surfaces in the s1 monolith. the <code>staking_command</code> rpc returns <code>NotImplemented</code>; the real staking path lives at <code>wallet/src/lib.rs:1923</code> in <code>stake_orchard_to_finalizer</code>. finalizer commission is zero in s1. this page marks both honestly.</li>
