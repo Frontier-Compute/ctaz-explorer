@@ -585,3 +585,16 @@ a.stat-link .value {
   color: var(--fg-muted);
   letter-spacing: -0.002em;
 }
+
+.footer-aside {
+  margin: 8px 0 0;
+  font-size: 0.7rem;
+  color: var(--fg-dim);
+  font-style: italic;
+  letter-spacing: -0.002em;
+}
+.footer-aside a {
+  color: var(--fg-dim);
+  font-style: normal;
+}
+.footer-aside a:hover { color: var(--fg-muted); }
