@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}chain graph{% endblock %}
+{% block content %}
+
+<h2>chain graph</h2>
+<p class="muted">server-rendered visualization of the last {{ pow_blocks | length }} pow blocks (left column) and the observed pos certs that finalize them (right column). lines connect each pos cert to the pow block it finalizes. tip at bottom on both columns. auto-refresh every 30s. no javascript, no canvas, just svg.</p>
+
+{% set svg_w = 760 %}
+{% set svg_h = 520 %}
+{% set pow_x = 130 %}
+{% set pow_w = 200 %}
+{% set pos_x = 560 %}
+{% set pos_r = 10 %}
+{% set block_h = 30 %}
+{% set gap = 6 %}
+{% set top_pad = 30 %}
+
+<div class="chain-graph-wrap">
+<svg viewBox="0 0 {{ svg_w }} {{ svg_h }}" class="chain-graph-svg" aria-label="chain graph pow to pos crosslink visualization" role="img">
+
+  <defs>
+    <linearGradient id="powGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fff3cf" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#f4b728" stop-opacity="0.9" />
+    </linearGradient>
+    <linearGradient id="powGradFinal" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fffaeb" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#e6c96b" stop-opacity="0.95" />
+    </linearGradient>
+    <radialGradient id="posGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#c34242" />
+      <stop offset="100%" stop-color="#8a2a2a" />
+    </radialGradient>
+    <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" fill="#8a8577">
+      <polygon points="0 0, 6 3, 0 6"/>
+    </marker>
+  </defs>
+
+  <text x="{{ pow_x + pow_w / 2 }}" y="18" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" fill="#8a8577" letter-spacing="0.12em">POW</text>
+  <text x="{{ pos_x }}" y="18" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" fill="#8a8577" letter-spacing="0.12em">POS</text>
+
+  {% for b in pow_blocks %}
+    {% set y = top_pad + loop.index0 * (block_h + gap) %}
+    <a href="/block/{{ b.height }}">
+    <rect x="{{ pow_x }}" y="{{ y }}" width="{{ pow_w }}" height="{{ block_h }}" rx="4" ry="4" fill="{% if b.finalized %}url(#powGradFinal){% else %}url(#powGrad){% endif %}" stroke="{% if b.tip %}#1a1a1a{% elif b.finalized %}#d9c97b{% else %}#e5e2d8{% endif %}" stroke-width="{% if b.tip %}2{% else %}1{% endif %}"/>
+    <text x="{{ pow_x + 12 }}" y="{{ y + block_h / 2 + 4 }}" font-family="ui-monospace,SFMono-Regular,monospace" font-size="11" font-weight="600" fill="#1a1a1a">#{{ b.height }}</text>
+    <text x="{{ pow_x + pow_w - 12 }}" y="{{ y + block_h / 2 + 4 }}" font-family="ui-monospace,SFMono-Regular,monospace" font-size="10" fill="#6b6555" text-anchor="end">{{ b.tx_count }} tx{% if b.tip %} · tip{% elif b.finalized %} · final{% endif %}</text>
+    </a>
+  {% endfor %}
+
+  {% set height_to_y = {} %}
+  {% for b in pow_blocks %}
+    {% set y = top_pad + loop.index0 * (block_h + gap) + block_h / 2 %}
+    {% set _ = height_to_y.update({b.height: y}) %}
+  {% endfor %}
+
+  {% for e in pos_events %}
+    {% set y = top_pad + loop.index0 * (block_h + gap) + block_h / 2 %}
+    <circle cx="{{ pos_x }}" cy="{{ y }}" r="{{ pos_r }}" fill="url(#posGrad)" stroke="#8a2a2a" stroke-width="1"/>
+    <text x="{{ pos_x + pos_r + 6 }}" y="{{ y + 3 }}" font-family="ui-monospace,SFMono-Regular,monospace" font-size="10" fill="#6b6555">#{{ e.pos_height }} · {{ e.signer_count }} sig{% if e.signer_count != 1 %}s{% endif %}</text>
+    {% set target_y = height_to_y.get(e.finalized_pow_height) %}
+    {% if target_y %}
+    {% set c1x = pow_x + pow_w + 80 %}
+    {% set c2x = pos_x - 80 %}
+    <path d="M {{ pow_x + pow_w }} {{ target_y }} C {{ c1x }} {{ target_y }}, {{ c2x }} {{ y }}, {{ pos_x - pos_r }} {{ y }}" stroke="#c9a84c" stroke-width="1.2" fill="none" opacity="0.6" marker-end="url(#arrow)"/>
+    {% endif %}
+  {% endfor %}
+
+  {% if not pos_events %}
+  <text x="{{ pos_x }}" y="{{ top_pad + 60 }}" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="11" fill="#a19a85">tracker warming up. pos observations appear as certs land.</text>
+  {% endif %}
+
+</svg>
+</div>
+
+<section class="stats" style="margin-top: 1.2rem">
+  <div class="stat"><div class="label">pow tip</div><div class="value">{{ tip or "—" }}</div></div>
+  <div class="stat"><div class="label">pow finalized</div><div class="value">{{ finalized_height or "—" }}</div></div>
+  <div class="stat"><div class="label">pow blocks shown</div><div class="value">{{ pow_blocks | length }}</div></div>
+  <div class="stat"><div class="label">pos certs linked</div><div class="value">{{ pos_events | length }}</div></div>
+  <div class="stat"><div class="label">peers</div><div class="value">{{ peers or "—" }}</div></div>
+</section>
+
+<h3>how to read this</h3>
+<p class="muted">each gold rectangle on the left is a pow block, newest at the bottom. each red circle on the right is an observed bft cert at its pos height. each curved line points from the pow block that cert finalized to the cert itself. the finalized-and-gold pow blocks have a darker gold tint. the tip pow block has a black border. server-rendered, no javascript, all data comes from the local node rpc and the participation tracker.</p>
+
+<p class="muted" style="margin-top: 0.8rem">
+see also: <a href="/">home</a> with per-block crosslink cards, <a href="/chain-health">/chain-health</a> signer trend, <a href="/finalizers">/finalizers</a> roster, <a href="/finalizers/participation">participation dashboard</a>.</p>
+
+{% endblock %}

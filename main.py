@@ -2078,3 +2078,47 @@ async def finalizer_detail_view(request: Request, pubkey: str):
         'signing_history': signing_history,
         'auto_refresh_s': 30,
     })
+
+@app.get('/chain-graph')
+async def chain_graph_view(request: Request):
+    info, final_hh = await asyncio.gather(
+        safe_call('getinfo'),
+        safe_call('get_tfl_final_block_height_and_hash'),
+    )
+    info = info or {}
+    tip = info.get('blocks')
+    peers = info.get('connections')
+    finalized_height = final_hh.get('height') if final_hh and isinstance(final_hh, dict) else None
+    n_pow = 14
+    pow_blocks = []
+    if tip is not None:
+        for h in range(max(0, tip - n_pow + 1), tip + 1):
+            hh = await safe_call('getblockhash', [h])
+            if hh:
+                blk = await safe_call('getblock', [hh, 1])
+                pow_blocks.append({
+                    'height': h,
+                    'hash': hh,
+                    'tx_count': len(blk.get('tx', [])) if blk else 0,
+                    'finalized': finalized_height is not None and h <= finalized_height,
+                    'tip': h == tip,
+                })
+    tracker = get_tracker()
+    events = sorted(tracker.pos_finalization_events, key=lambda e: e.get('pos_height') or 0)
+    pow_heights_in_view = {b['height'] for b in pow_blocks}
+    linked_events = []
+    for e in events:
+        fp = e.get('finalized_pow_height')
+        if fp in pow_heights_in_view:
+            linked_events.append(e)
+    if len(linked_events) > n_pow:
+        linked_events = linked_events[-n_pow:]
+    return templates.TemplateResponse(request, 'chain-graph.html', {
+        'request': request,
+        'tip': tip,
+        'peers': peers,
+        'finalized_height': finalized_height,
+        'pow_blocks': pow_blocks,
+        'pos_events': linked_events,
+        'auto_refresh_s': 30,
+    })

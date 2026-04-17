@@ -1331,3 +1331,21 @@ table.blocks tbody tr:hover { background: #fbf8ef; }
 .trend-up { color: #2a6b4d; }
 .trend-down { color: #8a2a2a; }
 .trend-flat { color: #8a8577; }
+
+.chain-graph-wrap {
+  margin: 1rem 0 1.5rem;
+  padding: 0.5rem;
+  background: #fdfcf8;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+}
+.chain-graph-svg {
+  width: 100%;
+  height: auto;
+  max-width: 780px;
+  margin: 0 auto;
+  display: block;
+}
+.chain-graph-svg a { cursor: pointer; }
+.chain-graph-svg a:hover rect { opacity: 0.85; }
