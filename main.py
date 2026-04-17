@@ -362,6 +362,232 @@ def load_chain_registry(name: str, chain_key: str):
         return []
 
 
+def env_flag(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() not in {'0', 'false', 'no', 'off'}
+
+
+def zap1_live_enabled() -> bool:
+    return env_flag('ZAP1_LIVE_API', True)
+
+
+async def load_zcash_zap1_anchors():
+    if zap1_live_enabled():
+        try:
+            return await fetch_zap1_live_anchors()
+        except Exception as exc:
+            logger.warning('falling back to static zcash ZAP1 anchors: %s', exc)
+    return load_chain_registry('zap1-anchors.json', 'zcash')
+
+
+async def load_zcash_zap1_leaves():
+    if zap1_live_enabled():
+        try:
+            return await fetch_zap1_live_leaves()
+        except Exception as exc:
+            logger.warning('falling back to static zcash ZAP1 leaves: %s', exc)
+    return load_chain_registry('zap1-leaves.json', 'zcash')
+
+
+async def load_zcash_zap1_leaf_count() -> int:
+    if zap1_live_enabled():
+        try:
+            status = await fetch_zap1_live_status()
+            leaf_count = status.get('leaf_count')
+            if leaf_count is not None:
+                return int(leaf_count)
+        except Exception as exc:
+            logger.warning('falling back to derived zcash ZAP1 leaf count: %s', exc)
+    return len(await load_zcash_zap1_leaves())
+
+
+async def load_zcash_zap1_leaf(leaf_hash: str):
+    leaves = await load_zcash_zap1_leaves()
+    for leaf in leaves:
+        if leaf.get('leaf_hash', '').lower() == leaf_hash.lower():
+            return leaf
+    if zap1_live_enabled():
+        try:
+            return await fetch_zap1_live_leaf_by_hash(leaf_hash)
+        except Exception as exc:
+            logger.warning('zcash ZAP1 leaf lookup failed for %s: %s', leaf_hash, exc)
+    return None
+
+
+VERIFY_NOT_FOUND_MESSAGE = 'no ZAP1 attestation found for this txid on zcash-mainnet or ctaz-s1'
+VERIFY_SERVICE_ERROR_MESSAGE = 'unable to reach the ZAP1 attestation service right now'
+
+
+def normalize_zap1_anchor_record(anchor: dict) -> dict:
+    anchors = anchor.get('anchors') or {}
+    mainnet = anchors.get('mainnet') or {}
+    ctaz = anchors.get('ctaz') or {}
+
+    mainnet_height = mainnet.get('height')
+    if mainnet_height is None:
+        mainnet_height = anchor.get('height')
+    if mainnet_height is None:
+        mainnet_height = anchor.get('block_height')
+
+    ctaz_height = ctaz.get('height')
+    if ctaz_height is None:
+        ctaz_height = anchor.get('height_ctaz')
+    if ctaz_height is None:
+        ctaz_height = anchor.get('ctaz_height')
+    if ctaz_height is None:
+        ctaz_height = anchor.get('anchor_height_ctaz')
+
+    return {
+        'root': anchor.get('root') or anchor.get('payload_hash'),
+        'leaf_count': anchor.get('leaf_count'),
+        'created_at': anchor.get('created_at'),
+        'mainnet': {
+            'txid': mainnet.get('txid') or anchor.get('txid'),
+            'height': mainnet_height,
+        },
+        'ctaz': {
+            'txid': (
+                ctaz.get('txid')
+                or anchor.get('txid_ctaz')
+                or anchor.get('ctaz_txid')
+                or anchor.get('anchor_txid_ctaz')
+            ),
+            'height': ctaz_height,
+        },
+    }
+
+
+def lookup_ctaz_cert_for_height(height: int) -> dict | None:
+    tracker = get_tracker()
+    matches = []
+    for cert_id, cert in tracker.certs_seen.items():
+        try:
+            pos_height = int(cert.get('pos_height'))
+            finalized_pow_height = int(cert.get('finalized_pow_height'))
+            signer_count = int(cert.get('signer_count') or 0)
+        except (TypeError, ValueError):
+            continue
+        if finalized_pow_height < int(height):
+            continue
+        matches.append((pos_height, cert_id, signer_count, finalized_pow_height))
+    if not matches:
+        return None
+    pos_height, cert_id, signer_count, finalized_pow_height = min(matches, key=lambda item: item[0])
+    return {
+        'id': cert_id,
+        'pos_height': pos_height,
+        'signer_count': signer_count,
+        'finalized_pow_height': finalized_pow_height,
+    }
+
+
+def block_href_for_network(network_label: str, height) -> str | None:
+    if height is None:
+        return None
+    prefix = '/block' if network_label == 'ctaz-s1' else '/z/block'
+    return f'{prefix}/{height}'
+
+
+def build_verify_examples(anchors: list[dict], limit: int = 3) -> list[dict]:
+    records = [normalize_zap1_anchor_record(anchor) for anchor in anchors]
+    records.sort(
+        key=lambda record: max(
+            int(record['ctaz']['height'] or 0),
+            int(record['mainnet']['height'] or 0),
+        ),
+        reverse=True,
+    )
+    examples = []
+    seen = set()
+    for record in records:
+        for network_label, chain_key in (('ctaz-s1', 'ctaz'), ('zcash-mainnet', 'mainnet')):
+            txid = record[chain_key].get('txid')
+            height = record[chain_key].get('height')
+            if not txid or txid in seen:
+                continue
+            examples.append({
+                'txid': txid,
+                'network': network_label,
+                'height': height,
+                'block_href': block_href_for_network(network_label, height),
+            })
+            seen.add(txid)
+            break
+        if len(examples) >= limit:
+            break
+    return examples
+
+
+async def load_verify_examples(limit: int = 3) -> list[dict]:
+    try:
+        live_anchors = await fetch_zap1_live_anchors()
+        examples = build_verify_examples(live_anchors, limit=limit)
+        if examples:
+            return examples
+    except Exception as exc:
+        logger.warning('ZAP1 verify examples falling back to static data: %s', exc)
+    return build_verify_examples(load_chain_registry('zap1-anchors.json', 'zcash'), limit=limit)
+
+
+async def lookup_live_zap1_attestation(txid: str) -> dict | None:
+    for anchor in await fetch_zap1_live_anchors():
+        record = normalize_zap1_anchor_record(anchor)
+        matched_network = None
+        if (record['ctaz'].get('txid') or '').lower() == txid:
+            matched_network = 'ctaz-s1'
+        elif (record['mainnet'].get('txid') or '').lower() == txid:
+            matched_network = 'zcash-mainnet'
+        if matched_network is None:
+            continue
+
+        primary_network = 'ctaz-s1' if record['ctaz'].get('height') is not None else 'zcash-mainnet'
+        primary_height = record['ctaz'].get('height') if primary_network == 'ctaz-s1' else record['mainnet'].get('height')
+        ctaz_cert = None
+        if record['ctaz'].get('height') is not None:
+            try:
+                ctaz_cert = lookup_ctaz_cert_for_height(int(record['ctaz']['height']))
+            except (TypeError, ValueError):
+                ctaz_cert = None
+
+        if primary_network == 'ctaz-s1' and ctaz_cert:
+            summary = (
+                f'attested at block {primary_height}, cert {ctaz_cert["id"]}, '
+                f'signed by {ctaz_cert["signer_count"]} finalizers'
+            )
+        elif primary_network == 'ctaz-s1' and primary_height is not None:
+            summary = f'attested on ctaz-s1 at block {primary_height}'
+        elif primary_height is not None:
+            summary = f'attested on zcash-mainnet at block {primary_height}'
+        else:
+            summary = f'attested on {primary_network}'
+
+        return {
+            'query_txid': txid,
+            'matched_network': matched_network,
+            'primary_network': primary_network,
+            'summary': summary,
+            'block_height': primary_height,
+            'block_href': block_href_for_network(primary_network, primary_height),
+            'root': record.get('root'),
+            'leaf_count': record.get('leaf_count'),
+            'created_at': record.get('created_at'),
+            'mainnet': {
+                'txid': record['mainnet'].get('txid'),
+                'height': record['mainnet'].get('height'),
+                'block_href': block_href_for_network('zcash-mainnet', record['mainnet'].get('height')),
+            },
+            'ctaz': {
+                'txid': record['ctaz'].get('txid'),
+                'height': record['ctaz'].get('height'),
+                'block_href': block_href_for_network('ctaz-s1', record['ctaz'].get('height')),
+            },
+            'ctaz_cert': ctaz_cert,
+        }
+    return None
+
+
 def route_chain_key(path: str):
     if path == '/z' or path == '/tip.z' or path.startswith('/z/') or path.startswith('/api/z/'):
         return 'zcash'
@@ -941,20 +1167,29 @@ async def build_verification(txid: str):
 @app.get('/verify')
 async def verify_view(request: Request, q: str = ''):
     q = q.strip()
-    result = None
+    attestation = None
+    not_found = None
     error = None
+    examples = await load_verify_examples()
     if q:
-        if len(q) != 64 or not all(c in '0123456789abcdef' for c in q.lower()):
+        q = q.lower()
+        if not is_hex64(q):
             error = 'txid must be 64 hex characters'
         else:
-            result = await build_verification(q)
-            if result is None:
-                error = 'transaction not found on this chain'
+            try:
+                attestation = await lookup_live_zap1_attestation(q)
+            except Exception as exc:
+                logger.warning('ZAP1 verify lookup failed for %s: %s', q, exc)
+                error = VERIFY_SERVICE_ERROR_MESSAGE
+            if attestation is None and error is None:
+                not_found = VERIFY_NOT_FOUND_MESSAGE
     return templates.TemplateResponse(request, 'verify.html', {
         'request': request,
         'q': q,
-        'result': result,
+        'attestation': attestation,
+        'examples': examples,
         'error': error,
+        'not_found': not_found,
     })
 
 
@@ -1186,7 +1421,7 @@ async def zcash_verify_view(request: Request, q: str = ''):
                 error = 'transaction not found on zcash mainnet'
             else:
                 flow = tx_value_flow(tx)
-                anchors = load_chain_registry('zap1-anchors.json', 'zcash')
+                anchors = await load_zcash_zap1_anchors()
                 zap1 = None
                 for entry in anchors:
                     if entry.get('txid', '').lower() == q.lower() and entry.get('network') == 'zcash-mainnet':

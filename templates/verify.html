@@ -1,46 +1,84 @@
 {% extends "base.html" %}
 {% block title %}verify{% endblock %}
 {% block content %}
-<h2>verify a transaction</h2>
-<p class='muted'>paste a ctaz txid, get the block, finality, pool usage, and any matching zap1 or zeven registry entry in one shot. shieldedvault tx matching is still a stub until the vault registry carries tx-addressable origin data. identical output available as json at <code>/api/verify/&lt;txid&gt;</code>, curl-friendly, no auth, no rate limit.</p>
+<h2>verify a ZAP1 attestation</h2>
+<p class='muted'>paste a transaction id to check whether the live ZAP1 service has anchored it.</p>
 
 <form action='/verify' method='get' class='search'>
 <input type='text' name='q' placeholder='64-char tx hash' value='{{ q or "" }}' autocomplete='off' spellcheck='false'>
-<button type='submit'>verify</button>
+<button type='submit'>check</button>
 </form>
 
 {% if error %}
 <p class='muted' style='color:#a03333'>{{ error }}</p>
 {% endif %}
 
-{% if result %}
-<h3>verification result</h3>
-<dl class='detail'>
-<dt>txid</dt><dd class='hash'>{{ result.txid }}</dd>
-<dt>found</dt><dd>yes</dd>
-<dt>block</dt><dd class='hash'>{% if result.block.hash %}<a href='/block/{{ result.block.hash }}'>{{ result.block.hash }}</a>{% else %}<span class='muted'>mempool or unknown</span>{% endif %}</dd>
-{% if result.block.height is not none %}<dt>height</dt><dd>{{ result.block.height }}</dd>{% endif %}
-{% if result.block.confirmations is not none %}<dt>confirmations</dt><dd>{{ result.block.confirmations }}</dd>{% endif %}
-<dt>tx finality</dt><dd><span class='finality {{ result.finality.tx | fincls }}'>{{ result.finality.tx | finlbl }}</span></dd>
-<dt>block finality</dt><dd><span class='finality {{ result.finality.block | fincls }}'>{{ result.finality.block | finlbl }}</span></dd>
-<dt>size</dt><dd>{{ result.size }} bytes</dd>
-<dt>transparent out</dt><dd>{{ result.flow.transparent_out_zat | ctaz }} ctaz across {{ result.flow.orchard_actions + result.flow.sapling_output + result.flow.sapling_spend }} shielded ops</dd>
-<dt>is coinbase</dt><dd>{{ 'yes' if result.flow.is_coinbase else 'no' }}</dd>
-<dt>is shielded</dt><dd>{{ 'yes' if result.flow.is_shielded else 'no' }}</dd>
-</dl>
-
-<h3>stack registry matches</h3>
-<dl class='detail'>
-<dt>zap1 anchor</dt><dd>{% if result.zap1_anchor %}<span class='badge badge-zap1'>{{ result.zap1_anchor.event_label }}</span> payload <code>{{ result.zap1_anchor.payload_hash | short }}</code>{% else %}no match in registry{% endif %}</dd>
-<dt>shieldedvault</dt><dd class="muted">{{ result.vault_message }}. registry rows still list at <a href='/vaults'>/vaults</a>.</dd>
-<dt>zeven event</dt><dd>{% if result.zeven_event %}<span class='badge badge-zeven'>{{ result.zeven_event.kind }}</span>{% else %}no match in registry{% endif %}</dd>
-</dl>
-
-<p class='muted'>none of this is asserted by the explorer. the block, finality, and flow come from the zebra node running this page. the registry matches compare against public json files at <a href='/api/anchors'>/api/anchors</a> and <a href='/api/events'>/api/events</a>. <a href='/api/vaults'>/api/vaults</a> is a registry listing only for now. you can clone the registry files and run the same checks locally.</p>
-
-<details>
-<summary class='muted'>raw json</summary>
-<pre style='overflow-x:auto;background:var(--card);border:1px solid var(--border);padding:12px;border-radius:6px;font-size:0.75rem;'>{{ result | tojson(indent=2) }}</pre>
-</details>
+{% if not_found %}
+<div class='card'>
+  <div class='card-head'>
+    <span class='card-title'>no attestation found</span>
+  </div>
+  <p class='card-foot'>{{ not_found }}</p>
+</div>
 {% endif %}
+
+{% if attestation %}
+<div class='card card-zap1'>
+  <div class='card-head'>
+    <span class='card-title'>attestation found</span>
+    <span class='badge badge-zap1'>{{ attestation.primary_network }}</span>
+  </div>
+  <p class='card-foot'>{{ attestation.summary }}</p>
+  <dl class='card-body'>
+    <dt>matched txid</dt><dd class='hash'>{{ attestation.query_txid }}</dd>
+    <dt>matched on</dt><dd>{{ attestation.matched_network }}</dd>
+    {% if attestation.block_height is not none and attestation.block_href %}
+    <dt>anchor block</dt><dd><a href='{{ attestation.block_href }}'>{{ attestation.block_height }}</a></dd>
+    {% endif %}
+    {% if attestation.ctaz_cert %}
+    <dt>cert</dt><dd class='hash'>{{ attestation.ctaz_cert.id }}</dd>
+    <dt>signed by</dt><dd>{{ attestation.ctaz_cert.signer_count }} finalizers</dd>
+    <dt>pos height</dt><dd>{{ attestation.ctaz_cert.pos_height }}</dd>
+    {% endif %}
+    {% if attestation.root %}
+    <dt>root</dt><dd class='hash'>{{ attestation.root }}</dd>
+    {% endif %}
+    {% if attestation.leaf_count is not none %}
+    <dt>leaf count</dt><dd>{{ attestation.leaf_count }}</dd>
+    {% endif %}
+    {% if attestation.mainnet.txid and attestation.mainnet.txid != attestation.query_txid %}
+    <dt>zcash-mainnet</dt>
+    <dd class='hash'>
+      <a href='/verify?q={{ attestation.mainnet.txid }}'>{{ attestation.mainnet.txid }}</a>
+      {% if attestation.mainnet.height is not none and attestation.mainnet.block_href %}
+      at <a href='{{ attestation.mainnet.block_href }}'>block {{ attestation.mainnet.height }}</a>
+      {% endif %}
+    </dd>
+    {% endif %}
+    {% if attestation.ctaz.txid and attestation.ctaz.txid != attestation.query_txid %}
+    <dt>ctaz-s1</dt>
+    <dd class='hash'>
+      <a href='/verify?q={{ attestation.ctaz.txid }}'>{{ attestation.ctaz.txid }}</a>
+      {% if attestation.ctaz.height is not none and attestation.ctaz.block_href %}
+      at <a href='{{ attestation.ctaz.block_href }}'>block {{ attestation.ctaz.height }}</a>
+      {% endif %}
+    </dd>
+    {% endif %}
+  </dl>
+</div>
+{% endif %}
+
+<h3>example txids</h3>
+{% if examples %}
+<ul>
+{% for item in examples %}
+<li class='hash'><a href='/verify?q={{ item.txid }}'>{{ item.txid }}</a> <span class='muted'>{{ item.network }}{% if item.height is not none and item.block_href %}, <a href='{{ item.block_href }}'>block {{ item.height }}</a>{% endif %}</span></li>
+{% endfor %}
+</ul>
+{% else %}
+<p class='muted'>no live examples available right now.</p>
+{% endif %}
+
+<p class='muted'><a href='/anchors'>full anchor list</a></p>
+<p class='muted'><a href='https://frontiercompute.cash' target='_blank' rel='noopener'>Want to attest your own compute? Deploy a ShieldedVault -&gt; frontiercompute.cash</a></p>
 {% endblock %}
