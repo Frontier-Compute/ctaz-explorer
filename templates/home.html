@@ -15,7 +15,11 @@
 </div>
 
 <h2>recent blocks</h2>
-<p class='muted' style='font-size:0.85rem;margin-top:-0.25rem'>sort: {% if order == 'asc' %}<a href='/'>newest first</a> · <strong>oldest first, tip at bottom</strong>{% else %}<strong>newest first</strong> · <a href='/?order=asc'>oldest first, tip at bottom (gui-style)</a>{% endif %}</p>
+<p class='sort-note'>
+  <a href='/' class='{% if order != "asc" %}active{% endif %}'>newest first</a>
+  ·
+  <a href='/?order=asc' class='{% if order == "asc" %}active{% endif %}'>oldest first</a>
+</p>
 <table class="blocks">
 <thead><tr><th>height</th><th>hash</th><th>tx</th><th>time</th></tr></thead>
 <tbody>

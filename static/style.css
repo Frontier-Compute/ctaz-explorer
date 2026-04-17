@@ -830,3 +830,23 @@ code.fpk {
 
 /* hide legacy hero/banner if still present somewhere */
 .hero, .hero-label, .hero-number, .hero-line, .banner, .operator, .verbs, .aside { display: none; }
+
+.sort-note {
+  font-size: 0.85rem;
+  color: #8a8577;
+  margin-top: -0.35rem;
+  margin-bottom: 1rem;
+  letter-spacing: 0.01em;
+}
+.sort-note a {
+  color: inherit;
+  text-decoration: none;
+  padding: 0 0.15rem;
+}
+.sort-note a:hover { text-decoration: underline; }
+.sort-note a.active {
+  color: #1a1a1a;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
