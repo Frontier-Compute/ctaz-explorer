@@ -1073,3 +1073,56 @@ code.fpk {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+.staking-window {
+  margin: 1rem 0 1.2rem;
+  padding: 0.7rem 0.85rem;
+  background: #fbf8ef;
+  border-radius: 5px;
+  border-left: 3px solid var(--gold-border);
+}
+.sw-label {
+  font-size: 0.72rem;
+  color: #8a8577;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.4rem;
+}
+.sw-cycle-num {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #4a4436;
+  font-weight: 500;
+}
+.sw-track {
+  position: relative;
+  height: 16px;
+  background: #f0ece0;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.sw-window {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, #fff3cf 0%, #f4c97b 100%);
+}
+.sw-marker {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: #1a1a1a;
+  z-index: 2;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.6);
+}
+.sw-caption {
+  font-size: 0.78rem;
+  color: #6b6555;
+  margin-top: 0.4rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.sw-live {
+  color: #b37a00;
+  font-weight: 600;
+}

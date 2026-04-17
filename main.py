@@ -280,16 +280,14 @@ def staking_day_state(tip: int):
     except Exception:
         return None
     cycle_pos = t % STAKING_CYCLE_BLOCKS
-    if cycle_pos < STAKING_WINDOW_BLOCKS:
-        return {
-            'live': True,
-            'blocks_remaining': STAKING_WINDOW_BLOCKS - cycle_pos,
-            'next_in': None,
-        }
+    in_window = cycle_pos < STAKING_WINDOW_BLOCKS
     return {
-        'live': False,
-        'blocks_remaining': None,
-        'next_in': STAKING_CYCLE_BLOCKS - cycle_pos,
+        'live': in_window,
+        'cycle_pos': cycle_pos,
+        'cycle_size': STAKING_CYCLE_BLOCKS,
+        'window_size': STAKING_WINDOW_BLOCKS,
+        'blocks_remaining': STAKING_WINDOW_BLOCKS - cycle_pos if in_window else None,
+        'next_in': None if in_window else STAKING_CYCLE_BLOCKS - cycle_pos,
     }
 
 async def get_bft_chain_tip():
@@ -570,11 +568,14 @@ async def stake_view(request: Request):
         if reverse_hex(m.get('pub_key', '')) == OPERATOR_FINALIZER_PUBKEY:
             our_stake = int(m.get('voting_power', 0))
             break
+    info = await safe_call('getinfo')
+    staking = staking_day_state(info['blocks']) if info else None
     return templates.TemplateResponse(request, 'stake.html', {
         'request': request,
         'pubkey': OPERATOR_FINALIZER_PUBKEY,
         'in_roster': in_roster,
         'our_stake': our_stake,
+        'staking': staking,
     })
 
 
@@ -1491,9 +1492,12 @@ async def participation_view(request: Request):
     roster = await safe_call('get_tfl_roster_zats') or []
     roster_sorted = sorted(roster, key=lambda m: int(m.get('voting_power', 0)), reverse=True)
     total_vp = sum(int(m.get('voting_power', 0)) for m in roster_sorted)
+    info = await safe_call('getinfo')
+    staking = staking_day_state(info['blocks']) if info else None
     return templates.TemplateResponse(request, 'participation.html', {
         'request': request,
         'roster': roster_sorted,
         'total_vp': total_vp,
         'stats': stats,
+        'staking': staking,
     })

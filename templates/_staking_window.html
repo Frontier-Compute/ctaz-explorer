@@ -1,0 +1,15 @@
+{% if staking %}
+<section class="staking-window">
+  <div class="sw-label">staking cycle <span class="sw-cycle-num">{{ (staking.cycle_pos // staking.cycle_size) if staking.cycle_pos is defined else 0 }}</span></div>
+  <div class="sw-track" aria-label="cycle progress">
+    <div class="sw-window" style="width: {{ (staking.window_size * 100 // staking.cycle_size) }}%"></div>
+    <div class="sw-marker" style="left: {{ (staking.cycle_pos * 100 // staking.cycle_size) }}%"></div>
+  </div>
+  <div class="sw-caption">
+    cycle pos {{ staking.cycle_pos }}/{{ staking.cycle_size }}
+    {% if staking.live %}<span class="sw-live">staking day LIVE</span>, {{ staking.blocks_remaining }} block{% if staking.blocks_remaining != 1 %}s{% endif %} left in window
+    {% else %}inactive, next window in {{ staking.next_in }} block{% if staking.next_in != 1 %}s{% endif %}
+    {% endif %}
+  </div>
+</section>
+{% endif %}
