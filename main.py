@@ -1878,3 +1878,40 @@ async def participation_view(request: Request):
         'staking': staking,
         'labels': load_finalizer_labels(),
     })
+
+@app.get('/stake/plan')
+async def stake_plan_view(request: Request, amount: str = '', bond: str = '10'):
+    info = await safe_call('getinfo')
+    staking = staking_day_state(info['blocks']) if info else None
+    plan = None
+    if amount:
+        try:
+            target = float(amount)
+            bond_size = float(bond)
+            if target > 0 and bond_size > 0:
+                n_full = int(target // bond_size)
+                remainder = round(target - n_full * bond_size, 4)
+                window_blocks = STAKING_WINDOW_BLOCKS
+                actions_total = n_full + (1 if remainder > 0.00005 else 0)
+                seconds_per_pow_block = 30
+                window_seconds = window_blocks * seconds_per_pow_block
+                seconds_per_action = window_seconds / actions_total if actions_total else 0
+                plan = {
+                    'target': target,
+                    'bond_size': bond_size,
+                    'full_bonds': n_full,
+                    'remainder': remainder,
+                    'actions_total': actions_total,
+                    'window_seconds': int(window_seconds),
+                    'seconds_per_action': round(seconds_per_action, 1),
+                }
+        except (ValueError, TypeError):
+            pass
+    return templates.TemplateResponse(request, 'stake-plan.html', {
+        'request': request,
+        'amount': amount,
+        'bond': bond,
+        'staking': staking,
+        'plan': plan,
+        'pubkey': OPERATOR_FINALIZER_PUBKEY,
+    })

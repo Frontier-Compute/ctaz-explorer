@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}batch staking planner{% endblock %}
+{% block content %}
+
+<h2>batch staking planner</h2>
+<p class="muted">plan a staking sequence that fits inside a staking day window. each bond stays a separate orchard action for privacy. consolidation is not possible by design.</p>
+
+{% include '_staking_window.html' %}
+
+<form action="/stake/plan" method="get" class="search" style="margin-bottom: 0.6rem">
+  <input type="text" name="amount" placeholder="total ctaz to stake (e.g. 100)" value="{{ amount or '' }}" autocomplete="off" spellcheck="false">
+  <input type="text" name="bond" placeholder="bond size (default 10)" value="{{ bond or '10' }}" autocomplete="off" spellcheck="false" style="max-width: 120px">
+  <button type="submit">plan</button>
+</form>
+
+{% if plan %}
+<section class="staking-window" style="margin-top: 1.2rem">
+  <div class="sw-label">sequence</div>
+  <div class="sw-caption">
+    {{ plan.actions_total }} stake action{% if plan.actions_total != 1 %}s{% endif %} to cover <strong>{{ plan.target }}</strong> ctaz in bonds of <strong>{{ plan.bond_size }}</strong>:
+    {% if plan.full_bonds > 0 %}{{ plan.full_bonds }} × {{ plan.bond_size }} ctaz{% endif %}{% if plan.remainder > 0.00005 %}{% if plan.full_bonds > 0 %} + {% endif %}1 × {{ plan.remainder }} ctaz remainder{% endif %}.
+    window is about {{ plan.window_seconds // 60 }} minutes, so pace around {{ plan.seconds_per_action }}s per action if you wait for a finalized block between each.
+  </div>
+</section>
+{% endif %}
+
+<h3>why a sequence and not a single tx</h3>
+<p class="muted">consolidation is not possible by design for privacy reasons, confirmed apr 17 in the crosslink updates channel. each bond is a separate orchard action. every stake creates one on-chain event, visible as a count not an identity. keeping bonds separate is the privacy guarantee, not a ui bug.</p>
+
+<h3>how to stake now</h3>
+<p class="muted">staking is done in the crosslink desktop wallet during the staking day window. pubkey to paste as the finalizer identity (use revhex on the node log to match this byte order):</p>
+<div class="detail">
+<dt>operator finalizer pubkey</dt>
+<dd class="hash">{{ pubkey }}</dd>
+</div>
+<p class="muted" style="margin-top: 0.8rem">see <a href="/stake">/stake</a> for the support page with copy-paste flow. live roster on <a href="/finalizers">/finalizers</a>. live participation on <a href="/finalizers/participation">/finalizers/participation</a>.</p>
+
+<h3>open upstream gap</h3>
+<p class="muted">a wallet-side batch helper that submits n stake transactions in sequence remains an open upstream gap. the existing zingo-cli has no stake command and zebrad has no rpc that both funds and delegates in one call. wallet/src/lib.rs:1924 stake_orchard_to_finalizer is the real path if someone wants to build a thin rust cli wrapper. out of scope for this explorer.</p>
+
+{% endblock %}
