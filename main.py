@@ -57,7 +57,7 @@ CHAINS = {
 }
 templates.env.globals['CHAINS'] = CHAINS
 
-OPERATOR_FINALIZER_PUBKEY = '646ae0e999d5c1d0f69bce3aaf5f5a71537bbc964c270a88f772592d79e14061'
+OPERATOR_FINALIZER_PUBKEY = 'bb93fde13cfc03f430af8d03f9114f711897170c18192a3524e48251d8f77e64'
 
 POOL_META = {
     'orchard': {'label': 'orchard', 'kind': 'shielded', 'class': 'pool-orchard'},
@@ -237,8 +237,16 @@ def iso_time(ts):
         return str(ts)
 
 
+def reverse_hex(h):
+    try:
+        return bytes.fromhex(str(h))[::-1].hex()
+    except Exception:
+        return str(h)
+
+
 templates.env.filters['amt'] = fmt_amount
 templates.env.filters['iso'] = iso_time
+templates.env.filters['revhex'] = reverse_hex
 templates.env.globals['operator_pubkey'] = OPERATOR_FINALIZER_PUBKEY
 
 
@@ -496,10 +504,10 @@ async def finalizers_view(request: Request):
 @app.get('/stake')
 async def stake_view(request: Request):
     roster = await safe_call('get_tfl_roster_zats') or []
-    in_roster = any(m.get('pub_key') == OPERATOR_FINALIZER_PUBKEY for m in roster)
+    in_roster = any(reverse_hex(m.get('pub_key', '')) == OPERATOR_FINALIZER_PUBKEY for m in roster)
     our_stake = 0
     for m in roster:
-        if m.get('pub_key') == OPERATOR_FINALIZER_PUBKEY:
+        if reverse_hex(m.get('pub_key', '')) == OPERATOR_FINALIZER_PUBKEY:
             our_stake = int(m.get('voting_power', 0))
             break
     return templates.TemplateResponse(request, 'stake.html', {
