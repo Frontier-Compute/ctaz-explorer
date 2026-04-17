@@ -215,6 +215,49 @@ class ParticipationTracker:
                 }
         return out
 
+    def get_scorecard(self, recent_n: int = 20) -> dict[str, dict[str, Any]]:
+        """For each finalizer pubkey (node-log order), compute participation
+        rate overall, recent-window rate, trend (recent_rate vs overall),
+        last-seen cert index, and letter grade."""
+        total_certs = len(self.certs_seen)
+        certs_sorted = sorted(self.certs_seen.items(), key=lambda kv: kv[1].get('first_seen_at') or 0)
+        recent_slice = certs_sorted[-recent_n:] if len(certs_sorted) > recent_n else certs_sorted
+        recent_total = len(recent_slice)
+        out = {}
+        for pk, hits in self.finalizer_hits.items():
+            overall_rate = (hits / total_certs) if total_certs > 0 else 0.0
+            recent_hits = sum(1 for _, c in recent_slice if pk in (c.get('signers') or []))
+            recent_rate = (recent_hits / recent_total) if recent_total > 0 else 0.0
+            last_seen_idx = None
+            for i in range(len(certs_sorted) - 1, -1, -1):
+                if pk in (certs_sorted[i][1].get('signers') or []):
+                    last_seen_idx = len(certs_sorted) - 1 - i
+                    break
+            trend = 'flat'
+            if total_certs >= recent_n and recent_rate > overall_rate + 0.05:
+                trend = 'up'
+            elif total_certs >= recent_n and recent_rate < overall_rate - 0.05:
+                trend = 'down'
+            if overall_rate >= 0.95:
+                grade = 'A'
+            elif overall_rate >= 0.8:
+                grade = 'B'
+            elif overall_rate >= 0.5:
+                grade = 'C'
+            elif overall_rate > 0:
+                grade = 'D'
+            else:
+                grade = 'F'
+            out[pk] = {
+                'hits': hits,
+                'overall_rate': overall_rate,
+                'recent_rate': recent_rate,
+                'trend': trend,
+                'last_seen_ago': last_seen_idx,
+                'grade': grade,
+            }
+        return out
+
     def get_stats(self) -> dict[str, Any]:
         total_certs = len(self.certs_seen)
         per_finalizer = {}

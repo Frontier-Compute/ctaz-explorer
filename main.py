@@ -1877,6 +1877,7 @@ async def participation_view(request: Request):
         'stats': stats,
         'staking': staking,
         'labels': load_finalizer_labels(),
+        'scorecard': get_tracker().get_scorecard(),
     })
 
 @app.get('/stake/plan')

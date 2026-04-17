@@ -1305,3 +1305,29 @@ table.blocks tbody tr:hover { background: #fbf8ef; }
   color: #8a8577;
   font-size: 0.82rem;
 }
+
+.grade {
+  display: inline-block;
+  min-width: 1.6rem;
+  padding: 0.08rem 0.35rem;
+  border-radius: 3px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.grade-A { background: #e8f5ef; color: #2a6b4d; border: 1px solid #b8dcc6; }
+.grade-B { background: #f0f3e8; color: #5a6b2a; border: 1px solid #c6d9b8; }
+.grade-C { background: #fff7e0; color: #7a5e0a; border: 1px solid #e6c96b; }
+.grade-D { background: #fef1e8; color: #8a4a1e; border: 1px solid #e6b88b; }
+.grade-F { background: #fbeaea; color: #8a2a2a; border: 1px solid #d9a0a0; }
+
+.trend {
+  display: inline-block;
+  font-weight: 600;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+.trend-up { color: #2a6b4d; }
+.trend-down { color: #8a2a2a; }
+.trend-flat { color: #8a8577; }
