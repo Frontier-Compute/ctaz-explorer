@@ -379,7 +379,7 @@ def tx_value_flow(tx):
 
 
 @app.get('/')
-async def home(request: Request):
+async def home(request: Request, order: str = 'desc'):
     info, chaininfo, roster, final_hh = await asyncio.gather(
         safe_call('getinfo'),
         safe_call('getblockchaininfo'),
@@ -413,7 +413,8 @@ async def home(request: Request):
         'finality_gap': finality_gap,
         'orchard': orchard,
         'transparent': transparent,
-        'recent': recent,
+        'recent': recent if order == 'asc' else list(reversed(recent)),
+        'order': order,
         'anchor_count': len(anchors),
         'vault_count': len(vaults),
         'event_count': len(events),
