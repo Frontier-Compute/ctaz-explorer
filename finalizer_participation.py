@@ -175,6 +175,27 @@ class ParticipationTracker:
         if self._task is None or self._task.done():
             self._task = asyncio.create_task(self._loop())
 
+    def get_recent_leet_capture(self, within_seconds: int = 3600):
+        """Return the most recent observed cert whose pos_height ends in 337
+        (1337, 2337, 3337, ...) if observed within the time window."""
+        now = time.time()
+        leet = [
+            e for e in self.pos_finalization_events
+            if e.get('pos_height') is not None
+            and e['pos_height'] % 1000 == 337
+            and (now - (e.get('observed_at') or 0)) < within_seconds
+        ]
+        if not leet:
+            return None
+        latest = max(leet, key=lambda e: e.get('observed_at') or 0)
+        return {
+            'pos_height': latest['pos_height'],
+            'signer_count': latest.get('signer_count') or 0,
+            'observed_at': latest.get('observed_at'),
+            'age_seconds': int(now - (latest.get('observed_at') or now)),
+            'finalized_pow_height': latest.get('finalized_pow_height'),
+        }
+
     def get_pow_to_pos_map(self, pow_heights: list[int]) -> dict[int, dict[str, Any]]:
         """For each requested PoW height, find the smallest PoS cert that had
         finalized_pow_height >= that PoW height at observation time.

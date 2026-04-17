@@ -468,6 +468,7 @@ async def home(request: Request, order: str = 'asc'):
         'bft': bft,
         'pow_pos_map': get_tracker().get_pow_to_pos_map([b['height'] for b in recent]),
         'staking': staking_day_state(tip),
+        'leet_capture': get_tracker().get_recent_leet_capture(),
     })
 
 
