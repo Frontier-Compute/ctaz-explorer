@@ -2043,6 +2043,8 @@ async def chain_health_view(request: Request):
         'finality_gap': finality_gap,
         'health': health,
         'reorgs': get_tracker().get_reorg_summary(),
+        'silent_finalizers': get_tracker().get_silent_finalizers(),
+        'labels': load_finalizer_labels(),
         'auto_refresh_s': 20,
     })
 
@@ -2060,6 +2062,7 @@ async def api_chain_health():
         'finalized_height': (final_hh.get('height') if final_hh and isinstance(final_hh, dict) else None),
         'health': get_tracker().get_chain_health(),
         'reorgs': get_tracker().get_reorg_summary(),
+        'silent_finalizers': get_tracker().get_silent_finalizers(),
     }
 
 @app.get('/finalizer/{pubkey}')

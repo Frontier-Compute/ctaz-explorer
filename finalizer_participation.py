@@ -342,6 +342,34 @@ class ParticipationTracker:
             'heights_tracked': len(self.height_hash_history),
         }
 
+    def get_silent_finalizers(self, min_absent_certs: int = 50) -> list[dict[str, Any]]:
+        """List finalizers who have not signed a cert in the last N observations.
+        Each entry: {pub_key, hits, last_seen_ago, overall_rate}.
+        Only considers finalizers who have signed at least once (not bootstrapping).
+        """
+        total_certs = len(self.certs_seen)
+        if total_certs < min_absent_certs:
+            return []
+        certs_sorted = sorted(self.certs_seen.items(), key=lambda kv: kv[1].get('first_seen_at') or 0)
+        silent = []
+        for pk, hits in self.finalizer_hits.items():
+            if hits == 0:
+                continue
+            last_seen_idx = None
+            for i in range(len(certs_sorted) - 1, -1, -1):
+                if pk in (certs_sorted[i][1].get('signers') or []):
+                    last_seen_idx = len(certs_sorted) - 1 - i
+                    break
+            if last_seen_idx is not None and last_seen_idx >= min_absent_certs:
+                silent.append({
+                    'pub_key': pk,
+                    'hits': hits,
+                    'last_seen_ago': last_seen_idx,
+                    'overall_rate': hits / total_certs,
+                })
+        silent.sort(key=lambda s: s['last_seen_ago'], reverse=True)
+        return silent
+
     def get_stats(self) -> dict[str, Any]:
         total_certs = len(self.certs_seen)
         per_finalizer = {}

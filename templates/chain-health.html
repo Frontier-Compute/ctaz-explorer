@@ -68,6 +68,25 @@
 </table>
 {% endif %}
 
+{% if silent_finalizers %}
+<h3>silent finalizers</h3>
+<p class="muted">{{ silent_finalizers | length }} finalizer{% if silent_finalizers | length != 1 %}s{% endif %} who signed at least once but have not appeared in the last 50+ observed certs. could indicate node offline, restart drift, or quorum exclusion below the 67% packing threshold. observer-local, not authoritative.</p>
+<table class="blocks">
+<thead><tr><th>finalizer</th><th>total signed</th><th>overall rate</th><th>last seen</th></tr></thead>
+<tbody>
+{% for s in silent_finalizers[:10] %}
+{% set lbl = labels.get(s.pub_key) if labels else none %}
+<tr>
+<td class="hash">{% if lbl %}<span class="finalizer-label">{{ lbl.name }}</span> {% endif %}<a href="/finalizer/{{ s.pub_key }}">{{ s.pub_key[:16] }}…</a></td>
+<td>{{ s.hits }}</td>
+<td>{{ "%.1f" | format(s.overall_rate * 100) }}%</td>
+<td class="muted">{{ s.last_seen_ago }} certs ago</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% endif %}
+
 <h3>what this catches</h3>
 <p class="muted">when a server node falls behind on bft and wallets syncing from that node start diverging into sidechains, the live cert signer count typically dips below the recent median. this page surfaces that dip programmatically. for node-state recovery snapshots see community endpoints in the crosslink updates channel. for canonical-chain fork detection see <a href="/sync-check">/sync-check</a>.</p>
 
