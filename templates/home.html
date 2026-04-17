@@ -67,9 +67,9 @@
 
 <h2>recent blocks</h2>
 <p class='sort-note'>
-  <a href='/' class='{% if order != "asc" %}active{% endif %}'>newest first</a>
+  <a href='/?order=desc' class='{% if order != "asc" %}active{% endif %}'>newest first</a>
   ·
-  <a href='/?order=asc' class='{% if order == "asc" %}active{% endif %}'>oldest first</a>
+  <a href='/' class='{% if order == "asc" %}active{% endif %}'>oldest first</a>
 </p>
 <table class="blocks">
 <thead><tr><th>height</th><th>hash</th><th>tx</th><th>time</th></tr></thead>

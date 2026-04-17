@@ -400,7 +400,7 @@ def tx_value_flow(tx):
 
 
 @app.get('/')
-async def home(request: Request, order: str = 'desc'):
+async def home(request: Request, order: str = 'asc'):
     info, chaininfo, roster, final_hh, bft = await asyncio.gather(
         safe_call('getinfo'),
         safe_call('getblockchaininfo'),
