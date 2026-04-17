@@ -413,7 +413,7 @@ async def home(request: Request):
         'finality_gap': finality_gap,
         'orchard': orchard,
         'transparent': transparent,
-        'recent': list(reversed(recent)),
+        'recent': recent,
         'anchor_count': len(anchors),
         'vault_count': len(vaults),
         'event_count': len(events),
