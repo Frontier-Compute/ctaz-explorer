@@ -26,7 +26,7 @@
 {% set p = stats.per_finalizer.get(pk_node) %}
 <tr>
 <td>{{ loop.index }}</td>
-<td class='hash' title='{{ pk_node }}'>{{ pk_node[:20] }}…</td>
+<td class='hash' title='{{ m.pub_key | revhex }}'>{% set pk_node = m.pub_key | revhex %}{% set lbl = labels.get(pk_node) if labels else none %}{% if lbl %}<span class='finalizer-label'>{% if lbl.url %}<a href='{{ lbl.url }}' rel='noopener'>{{ lbl.name }}</a>{% else %}{{ lbl.name }}{% endif %}</span> <span class='muted-mono'>{{ pk_node[:12] }}…</span>{% else %}{{ pk_node[:20] }}…{% endif %}</td>
 <td>{{ m.voting_power | ctaz }}</td>
 <td>{% if total_vp > 0 %}{{ "%.1f" | format((m.voting_power / total_vp) * 100) }}%{% else %}—{% endif %}</td>
 <td>{% if p %}{{ p.hits }}{% else %}0{% endif %}</td>

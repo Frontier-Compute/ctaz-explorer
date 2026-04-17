@@ -310,6 +310,16 @@ def staking_day_state(tip: int):
         'next_in': None if in_window else STAKING_CYCLE_BLOCKS - cycle_pos,
     }
 
+
+def load_finalizer_labels():
+    """Load opt-in community labels for finalizer pub_keys in node-log byte order."""
+    try:
+        with open('/root/ctaz-explorer/data/finalizer-labels.json') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
 async def get_bft_chain_tip():
     import struct
     fp = await safe_call('get_tfl_fat_pointer_to_bft_chain_tip')
@@ -583,6 +593,7 @@ async def home(request: Request, order: str = 'asc'):
         'pow_pos_map': get_tracker().get_pow_to_pos_map([b['height'] for b in recent]),
         'staking': staking_day_state(tip),
         'leet_capture': get_tracker().get_recent_leet_capture(),
+        'labels': load_finalizer_labels(),
     })
 
 
@@ -1629,4 +1640,5 @@ async def participation_view(request: Request):
         'total_vp': total_vp,
         'stats': stats,
         'staking': staking,
+        'labels': load_finalizer_labels(),
     })
