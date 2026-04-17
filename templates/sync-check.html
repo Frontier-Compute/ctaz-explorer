@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}sync check{% endblock %}
+{% block content %}
+
+<h2>sync check</h2>
+<p class="muted">paste your current block height and hash to see whether you are on the canonical chain or a local sidechain. our node is currently at tip <strong>{{ our_tip or "?" }}</strong> with <strong>{{ our_peers or "?" }}</strong> peers.</p>
+
+<form action="/sync-check" method="get" class="search" style="margin-bottom: 0.6rem">
+  <input type="text" name="height" placeholder="your block height (e.g. 3242)" value="{{ height or '' }}" autocomplete="off" spellcheck="false" style="max-width: 200px">
+  <input type="text" name="hash" placeholder="your block hash (optional, 64 hex chars)" value="{{ hash or '' }}" autocomplete="off" spellcheck="false">
+  <button type="submit">check</button>
+</form>
+
+{% if result %}
+<section class="staking-window" style="margin-top: 1.2rem; border-left-color: {% if result.status == 'match' %}#4a9e93{% elif result.status == 'mismatch' %}#c9a84c{% elif result.status == 'ahead' %}#8a8577{% else %}var(--gold-border){% endif %}">
+{% if result.status == 'match' %}
+  <div class="sw-label">match</div>
+  <div class="sw-caption">you are on the canonical chain at height <strong>{{ result.height }}</strong>. hash matches: <code>{{ result.canonical_hash }}</code></div>
+{% elif result.status == 'mismatch' %}
+  <div class="sw-label">mismatch</div>
+  <div class="sw-caption">at height <strong>{{ result.height }}</strong> our canonical hash is <code>{{ result.canonical_hash }}</code> but you reported <code>{{ result.your_hash }}</code>. one of the two nodes is on a sidechain.</div>
+  <p class="muted" style="font-size: 0.78rem; margin-top: 0.6rem">compare our peer count ({{ our_peers }}) and tip ({{ our_tip }}) to yours. if our peer count is substantially higher, we are likely canonical. to recover, consider loading a fresh snapshot from <a href="https://crosslink.cipherscan.app/bootstrap" rel="noopener">cipherscan bootstrap</a> or from the crosslink updates channel, then preserve your <code>secret.seed</code> across the cache swap.</p>
+{% elif result.status == 'ahead' %}
+  <div class="sw-label">ahead</div>
+  <div class="sw-caption">{{ result.note }}</div>
+{% elif result.status == 'canonical_only' %}
+  <div class="sw-label">canonical</div>
+  <div class="sw-caption">at height <strong>{{ result.height }}</strong> canonical hash is <code>{{ result.canonical_hash }}</code>. paste your hash to compare.</div>
+{% elif result.status == 'invalid' %}
+  <div class="sw-label">invalid</div>
+  <div class="sw-caption">{{ result.note }}</div>
+{% endif %}
+</section>
+{% endif %}
+
+<h3>what this is</h3>
+<p class="muted">a single-block canonical hash lookup against our node. useful when your local node has been mining in isolation and you want to know before you spend more time on a sidechain. hash comparison is case-insensitive, expects lowercase hex, 64 characters.</p>
+
+<h3>json api</h3>
+<p class="muted">programmatic: <code>/api/sync-check/&lt;height&gt;/&lt;your_hash&gt;</code>. returns <code>{height, canonical_hash, your_hash, match, our_tip, our_peers}</code>. curl-friendly, no auth, no rate limit.</p>
+
+<h3>context</h3>
+<p class="muted">multiple nodes in the crosslink season one feature net forked their own sidechains starting apr 17 following an upstream server node that fell behind after bft block 1337. if you have been stuck at the same height for an unusually long time or your miner keeps winning every block, check here first. recovery snapshots at <a href="https://crosslink.cipherscan.app/bootstrap" rel="noopener">cipherscan bootstrap</a> or in the crosslink updates channel.</p>
+
+{% endblock %}

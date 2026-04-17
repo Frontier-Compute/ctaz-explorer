@@ -1915,3 +1915,77 @@ async def stake_plan_view(request: Request, amount: str = '', bond: str = '10'):
         'plan': plan,
         'pubkey': OPERATOR_FINALIZER_PUBKEY,
     })
+
+@app.get('/sync-check')
+async def sync_check_view(request: Request, height: str = '', hash: str = ''):
+    info = await safe_call('getinfo') or {}
+    our_tip = info.get('blocks')
+    our_peers = info.get('connections')
+    result = None
+    height_int = None
+    your_hash = (hash or '').strip().lower()
+    if height:
+        try:
+            height_int = int(height)
+        except ValueError:
+            result = {'status': 'invalid', 'note': 'height must be an integer'}
+    if height_int is not None:
+        canonical_hash = await safe_call('getblockhash', [height_int])
+        if canonical_hash is None:
+            result = {
+                'status': 'ahead',
+                'height': height_int,
+                'note': f"block {height_int} is not in our chain yet. either your node is ahead of ours (our tip is {our_tip}) or the height does not exist.",
+            }
+        elif your_hash and len(your_hash) == 64 and all(c in '0123456789abcdef' for c in your_hash):
+            if your_hash == canonical_hash.lower():
+                result = {
+                    'status': 'match',
+                    'height': height_int,
+                    'canonical_hash': canonical_hash,
+                    'your_hash': your_hash,
+                }
+            else:
+                result = {
+                    'status': 'mismatch',
+                    'height': height_int,
+                    'canonical_hash': canonical_hash,
+                    'your_hash': your_hash,
+                }
+        else:
+            result = {
+                'status': 'canonical_only',
+                'height': height_int,
+                'canonical_hash': canonical_hash,
+            }
+    return templates.TemplateResponse(request, 'sync-check.html', {
+        'request': request,
+        'height': height,
+        'hash': hash,
+        'result': result,
+        'our_tip': our_tip,
+        'our_peers': our_peers,
+    })
+
+
+@app.get('/api/sync-check/{height}/{your_hash}')
+async def api_sync_check(height: int, your_hash: str):
+    info = await safe_call('getinfo') or {}
+    canonical = await safe_call('getblockhash', [height])
+    if canonical is None:
+        return {
+            'height': height,
+            'canonical_hash': None,
+            'your_hash': your_hash,
+            'match': None,
+            'status': 'ahead_of_our_tip_or_unknown',
+            'our_tip': info.get('blocks'),
+        }
+    return {
+        'height': height,
+        'canonical_hash': canonical,
+        'your_hash': your_hash,
+        'match': your_hash.lower() == canonical.lower(),
+        'our_tip': info.get('blocks'),
+        'our_peers': info.get('connections'),
+    }
