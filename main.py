@@ -2059,6 +2059,7 @@ async def api_chain_health():
         'peers': info.get('connections'),
         'finalized_height': (final_hh.get('height') if final_hh and isinstance(final_hh, dict) else None),
         'health': get_tracker().get_chain_health(),
+        'reorgs': get_tracker().get_reorg_summary(),
     }
 
 @app.get('/finalizer/{pubkey}')
