@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}metrics guide{% endblock %}
+{% block content %}
+
+<h2>metrics guide</h2>
+<p class="muted">prometheus exporter for the crosslink feature net. scrape <a href="/metrics">/metrics</a> into your stack. all gauges prefixed <code>ctaz_</code>.</p>
+
+<h3>scrape config</h3>
+<pre style="background:#faf8ef;border:1px solid var(--border);border-radius:6px;padding:12px;overflow-x:auto;font-size:0.82rem;line-height:1.5">scrape_configs:
+  - job_name: ctaz-crosslink
+    scrape_interval: 30s
+    metrics_path: /metrics
+    scheme: https
+    static_configs:
+      - targets: ['ctaz.zat-explorer.cash']</pre>
+
+<h3>available metrics</h3>
+<table class="blocks">
+<thead><tr><th>name</th><th>type</th><th>what it measures</th></tr></thead>
+<tbody>
+<tr><td><code>ctaz_pow_tip</code></td><td>gauge</td><td>latest pow block height seen</td></tr>
+<tr><td><code>ctaz_pow_finalized</code></td><td>gauge</td><td>latest bft-finalized pow block height</td></tr>
+<tr><td><code>ctaz_pow_finality_gap_blocks</code></td><td>gauge</td><td>pow blocks between finalized tip and pow tip</td></tr>
+<tr><td><code>ctaz_peers</code></td><td>gauge</td><td>number of p2p peers connected</td></tr>
+<tr><td><code>ctaz_bft_latest_signers</code></td><td>gauge</td><td>signer count on the most recent observed bft cert</td></tr>
+<tr><td><code>ctaz_bft_median_signers</code></td><td>gauge</td><td>median signer count over the recent window</td></tr>
+<tr><td><code>ctaz_bft_min_signers</code></td><td>gauge</td><td>min signer count in window</td></tr>
+<tr><td><code>ctaz_bft_max_signers</code></td><td>gauge</td><td>max signer count in window</td></tr>
+<tr><td><code>ctaz_bft_latest_degraded</code></td><td>gauge</td><td>1 when latest cert is below degraded threshold</td></tr>
+<tr><td><code>ctaz_bft_latest_pos_height</code></td><td>gauge</td><td>pos height of the latest observed cert</td></tr>
+<tr><td><code>ctaz_reorgs_observed_total</code></td><td>counter</td><td>reorgs observed since tracker start</td></tr>
+<tr><td><code>ctaz_finalizers_active</code></td><td>gauge</td><td>size of the active finalizer roster</td></tr>
+<tr><td><code>ctaz_finalizers_silent</code></td><td>gauge</td><td>finalizers absent from the last 50 plus observed certs</td></tr>
+<tr><td><code>ctaz_stake_total_zats</code></td><td>gauge</td><td>sum of voting power across roster in zatoshis</td></tr>
+<tr><td><code>ctaz_staking_cycle_pos</code></td><td>gauge</td><td>position inside the 150-block staking cycle</td></tr>
+<tr><td><code>ctaz_staking_window_live</code></td><td>gauge</td><td>1 if the staking window is currently open</td></tr>
+<tr><td><code>ctaz_staking_blocks_remaining</code></td><td>gauge</td><td>pow blocks left in the current staking window</td></tr>
+<tr><td><code>ctaz_staking_next_window_in</code></td><td>gauge</td><td>pow blocks until the next window opens</td></tr>
+<tr><td><code>ctaz_tracker_certs_observed</code></td><td>gauge</td><td>distinct bft certs the tracker has seen</td></tr>
+<tr><td><code>ctaz_tracker_pos_events</code></td><td>gauge</td><td>pos finalization events recorded</td></tr>
+<tr><td><code>ctaz_tracker_heights_tracked</code></td><td>gauge</td><td>pow heights the reorg detector is tracking</td></tr>
+</tbody>
+</table>
+
+<h3>grafana dashboard</h3>
+<p class="muted">download <a href="/static/ctaz-crosslink-grafana.json" download>ctaz-crosslink-grafana.json</a> and import into your grafana. pre-configured panels for pow tip, finalized height, finality gap, peers, bft signer trends, finalizer drop-off, reorgs, staking cycle, and total stake. refreshes every 30s, 1-hour default window.</p>
+<p class="muted">import path in grafana: Dashboards, New, Import, Upload dashboard JSON file.</p>
+
+<h3>alerting suggestions</h3>
+<p class="muted">useful prometheus alert rules:</p>
+<pre style="background:#faf8ef;border:1px solid var(--border);border-radius:6px;padding:12px;overflow-x:auto;font-size:0.82rem;line-height:1.5">- alert: CtazBftDegraded
+  expr: ctaz_bft_latest_degraded == 1
+  for: 2m
+  labels: {severity: warning}
+
+- alert: CtazFinalityGapHigh
+  expr: ctaz_pow_finality_gap_blocks > 50
+  for: 5m
+  labels: {severity: warning}
+
+- alert: CtazPeersLow
+  expr: ctaz_peers &lt; 5
+  for: 5m
+  labels: {severity: warning}
+
+- alert: CtazSilentFinalizers
+  expr: ctaz_finalizers_silent &gt;= 3
+  for: 10m
+  labels: {severity: info}</pre>
+
+<p class="muted" style="margin-top: 0.8rem">related: <a href="/chain-health">/chain-health</a> for human-readable view of the same signals, <a href="/api/chain-health">/api/chain-health</a> for json, <a href="/guide/staking">/guide/staking</a> for the operator reference.</p>
+
+{% endblock %}

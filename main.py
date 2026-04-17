@@ -2235,3 +2235,9 @@ async def prometheus_metrics():
     total_vp = sum(int(m.get('voting_power', 0)) for m in roster)
     g('stake_total_zats', total_vp, 'sum of voting_power across the active roster in zatoshis')
     return PlainTextResponse('\n'.join(lines) + '\n', media_type='text/plain; version=0.0.4; charset=utf-8')
+
+@app.get('/guide/metrics')
+async def metrics_guide_view(request: Request):
+    return templates.TemplateResponse(request, 'metrics-guide.html', {
+        'request': request,
+    })

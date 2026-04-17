@@ -1,0 +1,162 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green"}]}, "unit": "short"}, "overrides": []},
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+      "id": 1,
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "pluginVersion": "10.0.0",
+      "targets": [{"expr": "ctaz_pow_tip", "refId": "A"}],
+      "title": "PoW tip",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green"}]}, "unit": "short"}},
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+      "id": 2,
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "ctaz_pow_finalized", "refId": "A"}],
+      "title": "PoW finalized",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "orange", "value": 10}, {"color": "red", "value": 50}]}, "unit": "short"}},
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+      "id": 3,
+      "options": {"colorMode": "background", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "ctaz_pow_finality_gap_blocks", "refId": "A"}],
+      "title": "Finality gap",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "red"}, {"color": "orange", "value": 3}, {"color": "green", "value": 10}]}}},
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+      "id": 4,
+      "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "ctaz_peers", "refId": "A"}],
+      "title": "Peers",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green"}, {"color": "red", "value": 1}]}, "mappings": [{"type": "value", "options": {"0": {"text": "no"}, "1": {"text": "yes"}}}]}},
+      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0},
+      "id": 5,
+      "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "ctaz_bft_latest_degraded", "refId": "A"}],
+      "title": "BFT degraded",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "red"}, {"color": "green", "value": 1}]}, "mappings": [{"type": "value", "options": {"0": {"text": "closed"}, "1": {"text": "open"}}}]}},
+      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0},
+      "id": 6,
+      "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "ctaz_staking_window_live", "refId": "A"}],
+      "title": "Staking window",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 2}}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "id": 7,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+      "targets": [
+        {"expr": "ctaz_bft_latest_signers", "refId": "A", "legendFormat": "latest signers"},
+        {"expr": "ctaz_bft_median_signers", "refId": "B", "legendFormat": "median signers"},
+        {"expr": "ctaz_bft_min_signers", "refId": "C", "legendFormat": "min signers"},
+        {"expr": "ctaz_bft_max_signers", "refId": "D", "legendFormat": "max signers"}
+      ],
+      "title": "BFT signer count over time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 2}}},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "id": 8,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+      "targets": [
+        {"expr": "ctaz_pow_tip", "refId": "A", "legendFormat": "pow tip"},
+        {"expr": "ctaz_pow_finalized", "refId": "B", "legendFormat": "pow finalized"},
+        {"expr": "ctaz_bft_latest_pos_height", "refId": "C", "legendFormat": "pos height"}
+      ],
+      "title": "Chain heights",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 30, "lineWidth": 2}}},
+      "gridPos": {"h": 7, "w": 12, "x": 0, "y": 12},
+      "id": 9,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+      "targets": [
+        {"expr": "ctaz_finalizers_silent", "refId": "A", "legendFormat": "silent finalizers"},
+        {"expr": "ctaz_finalizers_active", "refId": "B", "legendFormat": "active roster size"}
+      ],
+      "title": "Finalizer drop-off",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 2}}},
+      "gridPos": {"h": 7, "w": 12, "x": 12, "y": 12},
+      "id": 10,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+      "targets": [
+        {"expr": "rate(ctaz_reorgs_observed_total[5m])", "refId": "A", "legendFormat": "reorgs per 5m"},
+        {"expr": "ctaz_tracker_certs_observed", "refId": "B", "legendFormat": "certs observed"}
+      ],
+      "title": "Reorg + cert accumulation",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 30, "lineWidth": 2}, "max": 150}},
+      "gridPos": {"h": 7, "w": 12, "x": 0, "y": 19},
+      "id": 11,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}},
+      "targets": [
+        {"expr": "ctaz_staking_cycle_pos", "refId": "A", "legendFormat": "cycle position"},
+        {"expr": "ctaz_staking_blocks_remaining", "refId": "B", "legendFormat": "blocks remaining in window"},
+        {"expr": "ctaz_staking_next_window_in", "refId": "C", "legendFormat": "blocks until next window"}
+      ],
+      "title": "Staking cycle",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green"}]}, "unit": "decbytes"}},
+      "gridPos": {"h": 7, "w": 12, "x": 12, "y": 19},
+      "id": 12,
+      "options": {"colorMode": "value", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [{"expr": "ctaz_stake_total_zats / 100000000", "refId": "A"}],
+      "title": "Total stake (cTAZ)",
+      "type": "stat"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["zcash", "crosslink", "ctaz"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {},
+  "timezone": "",
+  "title": "ctaz-explorer Crosslink BFT observability",
+  "uid": "ctaz-crosslink-observability",
+  "version": 1,
+  "weekStart": ""
+}
