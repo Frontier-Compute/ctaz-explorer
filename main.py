@@ -2035,6 +2035,14 @@ async def chain_health_view(request: Request):
     finalized_height = final_hh.get('height') if final_hh and isinstance(final_hh, dict) else None
     finality_gap = (tip - finalized_height) if tip is not None and finalized_height is not None else None
     health = get_tracker().get_chain_health()
+    chain_info = await safe_call('getblockchaininfo') or {}
+    version_info = {
+        'version': info.get('version'),
+        'build': info.get('build'),
+        'subversion': info.get('subversion'),
+        'protocolversion': info.get('protocolversion'),
+        'chain': chain_info.get('chain'),
+    }
     return templates.TemplateResponse(request, 'chain-health.html', {
         'request': request,
         'tip': tip,
@@ -2045,6 +2053,7 @@ async def chain_health_view(request: Request):
         'reorgs': get_tracker().get_reorg_summary(),
         'silent_finalizers': get_tracker().get_silent_finalizers(),
         'labels': load_finalizer_labels(),
+        'version_info': version_info,
         'auto_refresh_s': 20,
     })
 
@@ -2063,6 +2072,12 @@ async def api_chain_health():
         'health': get_tracker().get_chain_health(),
         'reorgs': get_tracker().get_reorg_summary(),
         'silent_finalizers': get_tracker().get_silent_finalizers(),
+        'version_info': {
+            'version': info.get('version'),
+            'build': info.get('build'),
+            'subversion': info.get('subversion'),
+            'protocolversion': info.get('protocolversion'),
+        },
     }
 
 @app.get('/finalizer/{pubkey}')
@@ -2158,4 +2173,14 @@ async def chain_graph_view(request: Request):
         'pow_blocks': pow_blocks,
         'pos_events': linked_events,
         'auto_refresh_s': 30,
+    })
+
+@app.get('/guide/staking')
+async def staking_guide_view(request: Request):
+    info = await safe_call('getinfo')
+    staking = staking_day_state(info['blocks']) if info else None
+    return templates.TemplateResponse(request, 'staking-guide.html', {
+        'request': request,
+        'staking': staking,
+        'auto_refresh_s': 60,
     })

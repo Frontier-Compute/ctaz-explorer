@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}staking guide{% endblock %}
+{% block content %}
+
+<h2>staking guide</h2>
+<p class="muted">consolidated reference for the crosslink season one staking model. covers the cycle, the privacy tradeoff, the sequencing pattern, and the verification workflow. written for community operators who have been asking these questions in the workshop channel. honest about what the software does and does not do today.</p>
+
+{% include '_staking_window.html' %}
+
+<h3>the staking cycle</h3>
+<p class="muted">pow cycle is 150 blocks. the staking window inside that cycle is 70 blocks. during the window you can submit stake delegations. outside the window you cannot. a staking day only becomes active once the first finalized block inside the window lands, which is why a bft stall can delay it past the cycle boundary.</p>
+<p class="muted">pow block time is roughly 30 seconds per block, so the window is about 35 minutes and the cycle is about 75 minutes. these are targets not guarantees. see <a href="/chain-health">/chain-health</a> for live finality gap and signer health.</p>
+
+<h3>why bonds are separate</h3>
+<p class="muted">each orchard stake is its own separate on-chain action. staking 100 ctaz in a single window usually means submitting 10 sequential actions of 10 ctaz each, not one action of 100. consolidation into one action would require linking bonds on-chain, which compromises the privacy the design is built to preserve. upstream confirmed this during the workshop.</p>
+<p class="muted">this is intentional. it is also a real ux friction. the right fix is tooling that generates many transactions more easily, not a consolidation primitive. see the upstream pr stack below for that tooling.</p>
+
+<h3>planning a sequence</h3>
+<p class="muted">the <a href="/stake/plan">/stake/plan</a> page takes a target amount and a bond size, returns the sequence count and pacing estimate for the 70-block window. use it before you open the staking panel so you know how many clicks are coming and whether you have time to finish before the window closes.</p>
+
+<h3>verifying you are on the canonical chain before you stake</h3>
+<p class="muted">a surprising amount of crosslink staking friction today traced back to nodes that were on a local sidechain without the operator knowing. staking into a sidechain is staking into nothing. before you stake, paste your current block height and hash into <a href="/sync-check">/sync-check</a> and confirm "match" against our canonical node. there is a json api at <code>/api/sync-check/&lt;height&gt;/&lt;hash&gt;</code> if you want to script the check.</p>
+
+<h3>checking your own finalizer performance</h3>
+<p class="muted">every pub key on the active roster has a detail page at <code>/finalizer/&lt;pubkey&gt;</code>. it shows grade, rolling window rate, trend, last seen, and a signing pattern sparkline. one caveat surfaced earlier: absence from a given cert does not necessarily mean offline, because fat pointers pack only the quorum minimum signers and low stake finalizers get dropped from that packing more often. trend and last-seen are more reliable health signals than a single cert absence.</p>
+<p class="muted">live roster at <a href="/finalizers">/finalizers</a>, live participation at <a href="/finalizers/participation">/finalizers/participation</a>, chain-wide silent finalizer flag at <a href="/chain-health">/chain-health</a>.</p>
+
+<h3>reading the chain graph</h3>
+<p class="muted">the <a href="/chain-graph">/chain-graph</a> page shows recent pow blocks on the left column and observed pos certs on the right column, with bezier curves connecting each pos cert to the pow block it finalizes. server rendered svg, no javascript. closest browser equivalent to the in-gui debug view. tip at bottom on both columns.</p>
+
+<h3>upstream tooling</h3>
+<p class="muted">the wallet crate helper for batching is at <code>stake_orchard_to_finalizer_batch</code>, added in pr #18 on the crosslink monolith s1_dev branch. the corresponding command line binary is in pr #20. both build clean under <code>cargo check</code>. once the stack lands upstream the batching friction becomes a one shot cli call rather than a sequence of gui clicks.</p>
+
+<h3>what this page does not cover</h3>
+<p class="muted">tax treatment of staking rewards depends on jurisdiction. community members have raised the complexity of tracking rewards across many bonds for tax purposes. this is a real concern, not one this page tries to answer. talk to a local accountant.</p>
+
+<p class="muted" style="margin-top: 0.8rem">related: <a href="/why">/why</a> for the explorer design notes, <a href="/stake">/stake</a> for delegation instructions, <a href="/params">/params</a> for protocol parameters, <a href="/chain-graph">/chain-graph</a> for visualization.</p>
+
+{% endblock %}
