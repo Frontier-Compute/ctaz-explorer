@@ -14,6 +14,21 @@
 <span>zooko said someone should make one, run a finalizer, and ask the protocol guardians to delegate. to support this operator, <a href="/stake">delegate to the finalizer</a>.</span>
 </div>
 
+<h2>chain view</h2>
+<p class='chain-caption'>tip at bottom, chain grows downward. finalized blocks in gold{% if finality_gap is not none %}. finality gap {{ finality_gap }} block{% if finality_gap != 1 %}s{% endif %}{% endif %}.</p>
+<div class='chain-view'>
+{% set chain_seq = recent if order == 'asc' else recent|reverse|list %}
+{% for b in chain_seq %}
+  {% if not loop.first %}<div class='chain-link' aria-hidden='true'></div>{% endif %}
+  {% set is_finalized = finalized_height is not none and b.height <= finalized_height %}
+  {% set is_tip = b.height == tip %}
+  <a href='/block/{{ b.height }}' class='chain-block{% if is_finalized %} finalized{% endif %}{% if is_tip %} tip{% endif %}'>
+    <span class='chain-height'>#{{ b.height }}</span>
+    <span class='chain-meta'>{{ b.tx_count }} tx · {{ b.time | ago }}{% if is_finalized %} · finalized{% elif is_tip %} · tip{% endif %}</span>
+  </a>
+{% endfor %}
+</div>
+
 <h2>recent blocks</h2>
 <p class='sort-note'>
   <a href='/' class='{% if order != "asc" %}active{% endif %}'>newest first</a>

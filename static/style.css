@@ -850,3 +850,74 @@ code.fpk {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+.chain-caption {
+  font-size: 0.85rem;
+  color: #8a8577;
+  margin-top: -0.35rem;
+  margin-bottom: 1rem;
+  letter-spacing: 0.01em;
+}
+.chain-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 0 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.chain-link {
+  width: 2px;
+  height: 14px;
+  background: linear-gradient(to bottom, #d9d4c6 0%, #d9d4c6 100%);
+  opacity: 0.7;
+}
+.chain-block {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  min-width: 280px;
+  max-width: 420px;
+  width: 100%;
+  padding: 0.55rem 0.9rem;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  background: #fdfcf8;
+  color: inherit;
+  text-decoration: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.chain-block:hover {
+  border-color: var(--border-hover);
+  background: #fffdf5;
+}
+.chain-block.finalized {
+  border-color: var(--gold-border);
+  background: #fffaeb;
+}
+.chain-block.finalized:hover {
+  border-color: #e6c96b;
+  background: #fff5d9;
+}
+.chain-block.tip {
+  border-color: #1a1a1a;
+  border-width: 2px;
+  background: #ffffff;
+  box-shadow: 0 1px 0 rgba(26, 26, 26, 0.06);
+}
+.chain-block.tip.finalized {
+  border-color: #1a1a1a;
+  background: #fffaeb;
+}
+.chain-height {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1a1a1a;
+  letter-spacing: 0.01em;
+}
+.chain-meta {
+  font-size: 0.78rem;
+  color: #8a8577;
+  text-align: right;
+}
