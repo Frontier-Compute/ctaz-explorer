@@ -1237,3 +1237,26 @@ table.blocks tbody tr:hover { background: #fbf8ef; }
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
 }
 /* ==== end jony polish v1 ==== */
+
+.bft-leet {
+  display: inline-block;
+  margin-top: 0.55rem;
+  padding: 0.25rem 0.7rem;
+  background: linear-gradient(90deg, #fff3cf 0%, #ffe69a 50%, #fff3cf 100%);
+  background-size: 200% 100%;
+  border: 1px solid #d9c97b;
+  border-radius: 100px;
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: #7a5e0a;
+  letter-spacing: 0.01em;
+  animation: leet-bounce 1.6s var(--ease-soft) infinite, leet-shimmer 2.8s linear infinite;
+}
+@keyframes leet-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+@keyframes leet-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

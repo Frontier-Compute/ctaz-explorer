@@ -59,6 +59,7 @@
 <div class='bft-label'>pos chain tip</div>
 <div class='bft-height'>#{% if bft.pos_height is not none %}{{ bft.pos_height }}{% else %}—{% endif %}</div>
 <div class='bft-signers'>{{ bft.signer_count }} signer{% if bft.signer_count != 1 %}s{% endif %} on current cert</div>
+{% if bft.pos_height == 1337 %}<div class='bft-leet' aria-label='pos 1337 milestone'>🎉 leet pos</div>{% endif %}
 {% if finalized_height is not none %}
 <div class='bft-links'>finalizes pow <a href='/block/{{ finalized_height }}'>#{{ finalized_height }}</a></div>
 {% endif %}
