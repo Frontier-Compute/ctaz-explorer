@@ -247,6 +247,13 @@ def reverse_hex(h):
 templates.env.filters['amt'] = fmt_amount
 templates.env.filters['iso'] = iso_time
 templates.env.filters['revhex'] = reverse_hex
+
+from finalizer_participation import get_tracker
+
+
+@app.on_event('startup')
+async def _start_participation_tracker():
+    await get_tracker().start()
 templates.env.globals['operator_pubkey'] = OPERATOR_FINALIZER_PUBKEY
 
 
@@ -1422,3 +1429,18 @@ async def tx_merkle_text_route(txid: str):
 async def zcash_merkle_text_route(txid: str):
     return PlainTextResponse(await _merkle_text('zcash', txid))
 
+
+@app.get('/finalizers/participation')
+async def participation_view(request: Request):
+    tracker = get_tracker()
+    await tracker.start()
+    stats = tracker.get_stats()
+    roster = await safe_call('get_tfl_roster_zats') or []
+    roster_sorted = sorted(roster, key=lambda m: int(m.get('voting_power', 0)), reverse=True)
+    total_vp = sum(int(m.get('voting_power', 0)) for m in roster_sorted)
+    return templates.TemplateResponse(request, 'participation.html', {
+        'request': request,
+        'roster': roster_sorted,
+        'total_vp': total_vp,
+        'stats': stats,
+    })

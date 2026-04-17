@@ -2,6 +2,7 @@
 {% block title %}finalizers{% endblock %}
 {% block content %}
 <h2>active finalizer roster</h2>
+<p class='muted'><a href='/finalizers/participation'>participation view (v1)</a></p>
 <p class="muted">finalized at block {% if finalized and finalized.height is defined %}{{ finalized.height }}{% else %}—{% endif %}, total stake {{ total_vp | ctaz }} ctaz across {{ roster | length }} finalizers</p>
 
 <table class="blocks">
