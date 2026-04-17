@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}chain health{% endblock %}
+{% block content %}
+
+<h2>chain health</h2>
+<p class="muted">live bft signer participation trend and finality gap. flags a cert as <strong>degraded</strong> when its signer count falls below the recent-window median minus a threshold. auto-refresh every 20s.</p>
+
+<section class="stats">
+  <div class="stat"><div class="label">pow tip</div><div class="value">{{ tip or "—" }}</div></div>
+  <div class="stat"><div class="label">pow finalized</div><div class="value">{{ finalized_height or "—" }}</div></div>
+  <div class="stat"><div class="label">finality gap</div><div class="value">{% if finality_gap is not none %}{{ finality_gap }}{% else %}—{% endif %}<span class="unit">blocks</span></div></div>
+  <div class="stat"><div class="label">peers</div><div class="value">{{ peers or "—" }}</div></div>
+  {% if health and health.total_events > 0 %}
+  <div class="stat"><div class="label">pos tip</div><div class="value">{{ health.latest_pos_height }}</div></div>
+  <div class="stat"><div class="label">latest signers</div><div class="value">{% if health.degraded %}<span style="color:#a03333">{{ health.latest_signer_count }}</span>{% else %}<span style="color:#2a6b4d">{{ health.latest_signer_count }}</span>{% endif %}<span class="unit">of {{ health.median_signers }} median</span></div></div>
+  <div class="stat"><div class="label">window min/max</div><div class="value">{{ health.min_signers }}/{{ health.max_signers }}</div></div>
+  <div class="stat"><div class="label">window size</div><div class="value">{{ health.window_size }}<span class="unit">certs</span></div></div>
+  {% endif %}
+</section>
+
+{% if health and health.total_events > 0 %}
+  {% if health.degraded %}
+  <section class="staking-window" style="border-left-color:#a03333;background:#fef5f5;margin-top:1.2rem">
+    <div class="sw-label" style="color:#a03333">degraded</div>
+    <div class="sw-caption">latest cert at pos {{ health.latest_pos_height }} has only {{ health.latest_signer_count }} signers. recent-window median is {{ health.median_signers }}, degraded threshold is below {{ health.degraded_threshold }}. possible node drop-off or upstream lag.</div>
+  </section>
+  {% else %}
+  <section class="staking-window" style="border-left-color:#4a9e93;background:#f0faf7;margin-top:1.2rem">
+    <div class="sw-label" style="color:#2a6b4d">healthy</div>
+    <div class="sw-caption">latest cert at pos {{ health.latest_pos_height }} with {{ health.latest_signer_count }} signers. recent-window median is {{ health.median_signers }}, min {{ health.min_signers }}, max {{ health.max_signers }}. no signer drop-off detected.</div>
+  </section>
+  {% endif %}
+
+  <h3>signer count over recent window</h3>
+  <p class="muted">each bar is one observed cert in the recent {{ health.window_size }}-cert window, oldest on the left, newest on the right. bar height is signer count normalized to the max.</p>
+  <div class="sparkline" aria-label="signer count over recent window">
+  {% for c in health.sparkline %}
+    {% set height_pct = (c * 100 // (health.max_signers if health.max_signers > 0 else 1)) %}
+    <div class="spark-bar" style="height: {{ height_pct }}%" title="signers: {{ c }}"></div>
+  {% endfor %}
+  </div>
+{% else %}
+  <p class="muted">tracker has not yet observed any certs. check back in 30 seconds.</p>
+{% endif %}
+
+<h3>json api</h3>
+<p class="muted">programmatic at <code>/api/chain-health</code>. returns <code>{tip, peers, finalized_height, health: {latest_signer_count, median_signers, degraded, sparkline, ...}}</code>. curl-friendly, no auth, no rate limit.</p>
+
+<h3>what this catches</h3>
+<p class="muted">when a server node falls behind on bft and wallets syncing from that node start diverging into sidechains, the live cert signer count typically dips below the recent median. this page surfaces that dip programmatically. for node-state recovery snapshots see community endpoints in the crosslink updates channel. for canonical-chain fork detection see <a href="/sync-check">/sync-check</a>.</p>
+
+{% endblock %}

@@ -258,6 +258,52 @@ class ParticipationTracker:
             }
         return out
 
+    def get_chain_health(self, recent_n: int = 40, degraded_delta: int = 2) -> dict[str, Any]:
+        """Compute chain-health indicators from observed certs.
+        Returns recent-window stats, median signer count, latest cert status,
+        and whether the latest is "degraded" (signers >= median-delta below).
+        """
+        events = sorted(
+            [e for e in self.pos_finalization_events if e.get('pos_height') is not None and e.get('signer_count') is not None],
+            key=lambda e: e['pos_height'],
+        )
+        if not events:
+            return {
+                'total_events': 0,
+                'sparkline': [],
+            }
+        window = events[-recent_n:] if len(events) > recent_n else events
+        signer_counts = [e['signer_count'] for e in window]
+        sorted_counts = sorted(signer_counts)
+        mid = len(sorted_counts) // 2
+        if len(sorted_counts) % 2 == 0 and len(sorted_counts) > 0:
+            median = (sorted_counts[mid - 1] + sorted_counts[mid]) / 2
+        else:
+            median = sorted_counts[mid] if sorted_counts else 0
+        latest = events[-1]
+        latest_count = latest['signer_count']
+        degraded = latest_count is not None and latest_count < median - degraded_delta
+        finalized = latest.get('finalized_pow_height')
+        sparkline = [e['signer_count'] for e in window]
+        min_sig = min(signer_counts) if signer_counts else 0
+        max_sig = max(signer_counts) if signer_counts else 0
+        avg_sig = sum(signer_counts) / len(signer_counts) if signer_counts else 0
+        return {
+            'total_events': len(events),
+            'window_size': len(window),
+            'median_signers': median,
+            'avg_signers': round(avg_sig, 2),
+            'min_signers': min_sig,
+            'max_signers': max_sig,
+            'latest_pos_height': latest['pos_height'],
+            'latest_signer_count': latest_count,
+            'latest_finalized_pow': finalized,
+            'degraded': degraded,
+            'degraded_threshold': median - degraded_delta,
+            'sparkline': sparkline,
+            'events': window,
+        }
+
     def get_stats(self) -> dict[str, Any]:
         total_certs = len(self.certs_seen)
         per_finalizer = {}

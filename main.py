@@ -1990,3 +1990,40 @@ async def api_sync_check(height: int, your_hash: str):
         'our_tip': info.get('blocks'),
         'our_peers': info.get('connections'),
     }
+
+@app.get('/chain-health')
+async def chain_health_view(request: Request):
+    info, final_hh = await asyncio.gather(
+        safe_call('getinfo'),
+        safe_call('get_tfl_final_block_height_and_hash'),
+    )
+    info = info or {}
+    tip = info.get('blocks')
+    peers = info.get('connections')
+    finalized_height = final_hh.get('height') if final_hh and isinstance(final_hh, dict) else None
+    finality_gap = (tip - finalized_height) if tip is not None and finalized_height is not None else None
+    health = get_tracker().get_chain_health()
+    return templates.TemplateResponse(request, 'chain-health.html', {
+        'request': request,
+        'tip': tip,
+        'peers': peers,
+        'finalized_height': finalized_height,
+        'finality_gap': finality_gap,
+        'health': health,
+        'auto_refresh_s': 20,
+    })
+
+
+@app.get('/api/chain-health')
+async def api_chain_health():
+    info, final_hh = await asyncio.gather(
+        safe_call('getinfo'),
+        safe_call('get_tfl_final_block_height_and_hash'),
+    )
+    info = info or {}
+    return {
+        'tip': info.get('blocks'),
+        'peers': info.get('connections'),
+        'finalized_height': (final_hh.get('height') if final_hh and isinstance(final_hh, dict) else None),
+        'health': get_tracker().get_chain_health(),
+    }
