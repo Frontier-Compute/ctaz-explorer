@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block title %}ctaz-explorer · chain{% endblock %}
 {% block content %}
+<p class="family-eyebrow">ctaz workshop instance. part of <a href="https://zat-explorer.cash">zat explorer</a>. custody standard: <a href="https://frontiercompute.cash">shieldedvault</a>. <a href="/vaults">vaults</a> &middot; <a href="/verify">verify</a> &middot; <a href="/anchors">anchors</a>.</p>
+
 <section class="stats">
   <div class="stat"><div class="label">tip</div><div class="value">{{ tip }}</div></div>
   <div class="stat"><div class="label">finalized</div><div class="value">{% if finalized and finalized.height is defined %}{{ finalized.height }}{% else %}—{% endif %}</div></div>

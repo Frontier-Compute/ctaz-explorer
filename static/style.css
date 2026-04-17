@@ -1057,3 +1057,19 @@ code.fpk {
   .chain-row { grid-template-columns: minmax(200px, 1fr) 32px minmax(100px, 130px); }
   .pos-marker { padding: 0.35rem 0.5rem; font-size: 0.75rem; }
 }
+
+.family-eyebrow {
+  font-size: 0.78rem;
+  color: #8a8577;
+  letter-spacing: 0.01em;
+  margin: 0 0 1rem;
+  padding: 0.35rem 0.55rem;
+  background: #fbf8ef;
+  border-left: 3px solid var(--gold-border);
+  border-radius: 2px;
+}
+.family-eyebrow a {
+  color: #1a1a1a;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
