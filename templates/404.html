@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}404 · ctaz-explorer{% endblock %}
+{% block content %}
+<h2>404</h2>
+<div class='card'>
+<div class='card-head'>
+<div class='card-title'>not found</div>
+<span class='pool-tag'>404</span>
+</div>
+<p class='muted'>{{ message }}</p>
+<p class='muted'>try a block height, txid, or address in the search box, or jump to <a href='/'>ctaz</a>, <a href='/z'>zcash mainnet</a>, or <a href='/verify'>verify</a>.</p>
+</div>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}503 · ctaz-explorer{% endblock %}
+{% block content %}
+<h2>503</h2>
+<div class='card'>
+<div class='card-head'>
+<div class='card-title'>temporarily unavailable</div>
+<span class='pool-tag'>503</span>
+</div>
+<p class='muted'>{{ message }}</p>
+<p class='muted'>the route stays dark until the expected backend answers again. api clients get the same status as json under <code>/api/</code>.</p>
+</div>
+{% endblock %}

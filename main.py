@@ -1,11 +1,13 @@
 import asyncio
 import json
+import logging
 import os
 import pathlib
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from rpc import ZebradRPC
 
 app = FastAPI(title='ctaz-explorer', docs_url=None, redoc_url=None)
@@ -13,6 +15,19 @@ templates = Jinja2Templates(directory='templates')
 app.mount('/static', StaticFiles(directory='static'), name='static')
 rpc = ZebradRPC()
 rpc_zcash = ZebradRPC(url=os.environ.get('ZCASH_MAINNET_RPC_URL', 'http://127.0.0.1:8232'))
+logger = logging.getLogger(__name__)
+CHAIN_ROUTE_STATUS = {
+    'ctaz': {'ok': True, 'message': ''},
+    'zcash': {'ok': True, 'message': ''},
+}
+EXPECTED_CHAIN_IDS = {
+    'ctaz': 'ctaz-s1',
+    'zcash': 'main',
+}
+EXPECTED_GENESIS_HASHES = {
+    'ctaz': os.environ.get('CTAZ_EXPECTED_GENESIS_HASH', '05a60a92d99d85997cce3b87616c089f6124d7342af37106edc76126334a2c38').lower(),
+    'zcash': os.environ.get('ZCASH_MAINNET_GENESIS_HASH', '00040fe8ec8471911baa1db1266ea15dd06b4a8a5c453883c000b031973dce08').lower(),
+}
 
 
 NO_STORE_PREFIXES = (
@@ -25,8 +40,13 @@ NO_STORE_PREFIXES = (
 
 @app.middleware('http')
 async def no_store_live_surfaces(request: Request, call_next):
-    response = await call_next(request)
     path = request.url.path
+    chain_key = route_chain_key(path)
+    issue = CHAIN_ROUTE_STATUS.get(chain_key) if chain_key else None
+    if issue and not issue.get('ok', True):
+        response = make_error_response(request, 503, issue.get('message'))
+    else:
+        response = await call_next(request)
     if path in {'/', '/z', '/robots.txt', '/sitemap.xml'} or any(path.startswith(p) for p in NO_STORE_PREFIXES):
         response.headers['Cache-Control'] = 'no-store'
         response.headers['X-Robots-Tag'] = 'noarchive'
@@ -332,30 +352,120 @@ def load_chain_registry(name: str, chain_key: str):
         return []
 
 
+def route_chain_key(path: str):
+    if path == '/z' or path == '/tip.z' or path.startswith('/z/') or path.startswith('/api/z/'):
+        return 'zcash'
+    if path in {
+        '/',
+        '/search',
+        '/verify',
+        '/why',
+        '/params',
+        '/stake',
+        '/anchors',
+        '/vaults',
+        '/events',
+        '/finalizers',
+        '/health',
+        '/tip',
+        '/finalized',
+        '/gap',
+        '/feed.xml',
+        '/.well-known/explorer',
+    }:
+        return 'ctaz'
+    if path.startswith(('/api/', '/block/', '/tx/', '/address/', '/pool/', '/finalizers/')):
+        return 'ctaz'
+    return None
+
+
+def error_default_message(status_code: int):
+    defaults = {
+        404: 'page not found',
+        500: 'internal server error',
+        503: 'upstream node not ready',
+    }
+    return defaults.get(status_code, 'something went wrong')
+
+
+def make_error_response(request: Request, status_code: int, message: str | None = None):
+    message = message or error_default_message(status_code)
+    if request.url.path.startswith('/api/'):
+        return JSONResponse(status_code=status_code, content={'error': message})
+    template_name = {
+        404: '404.html',
+        503: '503.html',
+    }.get(status_code, 'error.html')
+    return templates.TemplateResponse(request, template_name, {
+        'request': request,
+        'status_code': status_code,
+        'message': message,
+    }, status_code=status_code)
+
+
+async def inspect_chain_backend(chain_key: str):
+    label = CHAINS[chain_key]['label']
+    chaininfo = await safe_call_on(chain_key, 'getblockchaininfo')
+    if not chaininfo:
+        message = f'{label} routes disabled: backend check failed'
+        logger.error('%s rpc startup check failed: no getblockchaininfo result', chain_key)
+        return {'ok': False, 'message': message}
+    observed_chain = str(chaininfo.get('chain') or '').lower()
+    observed_genesis = await safe_call_on(chain_key, 'getblockhash', [0])
+    expected_chain = EXPECTED_CHAIN_IDS[chain_key]
+    expected_genesis = EXPECTED_GENESIS_HASHES[chain_key]
+    chain_ok = observed_chain == expected_chain
+    genesis_ok = bool(observed_genesis) and observed_genesis.lower() == expected_genesis
+    if chain_ok or genesis_ok:
+        if not chain_ok and genesis_ok:
+            logger.warning(
+                '%s rpc reported chain=%s but genesis matched %s, accepting routes',
+                chain_key,
+                observed_chain or 'unknown',
+                expected_genesis,
+            )
+        else:
+            logger.info('%s rpc startup check passed with chain=%s', chain_key, observed_chain or 'unknown')
+        return {'ok': True, 'message': ''}
+    message = f'{label} routes disabled: expected {expected_chain}, got {observed_chain or "unknown"}'
+    logger.error(
+        '%s rpc startup check failed: expected chain=%s genesis=%s, got chain=%s genesis=%s',
+        chain_key,
+        expected_chain,
+        expected_genesis,
+        observed_chain or 'unknown',
+        observed_genesis or 'unknown',
+    )
+    return {'ok': False, 'message': message}
+
+
+async def refresh_chain_route_status():
+    ctaz_status, zcash_status = await asyncio.gather(
+        inspect_chain_backend('ctaz'),
+        inspect_chain_backend('zcash'),
+    )
+    CHAIN_ROUTE_STATUS['ctaz'] = ctaz_status
+    CHAIN_ROUTE_STATUS['zcash'] = zcash_status
+
+
+@app.on_event('startup')
+async def verify_chain_backends():
+    await refresh_chain_route_status()
+
+
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
-    if request.url.path.startswith('/api/'):
-        return JSONResponse(status_code=500, content={'error': 'internal server error'})
+    logger.error('unhandled exception on %s', request.url.path, exc_info=(type(exc), exc, exc.__traceback__))
     try:
-        return templates.TemplateResponse(request, 'error.html', {
-            'request': request,
-            'status_code': 500,
-            'message': 'internal server error',
-        }, status_code=500)
+        return make_error_response(request, 500, 'internal server error')
     except Exception:
         return JSONResponse(status_code=500, content={'error': 'internal server error'})
 
 
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
-    if request.url.path.startswith('/api/'):
-        return JSONResponse(status_code=exc.status_code, content={'error': exc.detail})
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     try:
-        return templates.TemplateResponse(request, 'error.html', {
-            'request': request,
-            'status_code': exc.status_code,
-            'message': exc.detail or 'something went wrong',
-        }, status_code=exc.status_code)
+        return make_error_response(request, exc.status_code, exc.detail or error_default_message(exc.status_code))
     except Exception:
         return JSONResponse(status_code=exc.status_code, content={'error': exc.detail})
 
@@ -397,6 +507,10 @@ def finality_label(finality):
 
 templates.env.filters['fincls'] = finality_class
 templates.env.filters['finlbl'] = finality_label
+
+
+def is_hex64(value: str):
+    return len(value) == 64 and all(c in '0123456789abcdef' for c in value.lower())
 
 
 def tx_value_flow(tx):
@@ -477,6 +591,8 @@ async def block_view(request: Request, hash_or_height: str):
     if hash_or_height.isdigit():
         h_hash = await safe_call('getblockhash', [int(hash_or_height)])
     else:
+        if not is_hex64(hash_or_height):
+            raise HTTPException(status_code=404, detail='block hash must be 64 hex characters or a decimal height')
         h_hash = hash_or_height
     if not h_hash:
         raise HTTPException(status_code=404, detail='block not found')
@@ -508,6 +624,8 @@ async def block_view(request: Request, hash_or_height: str):
 
 @app.get('/tx/{txid}')
 async def tx_view(request: Request, txid: str):
+    if not is_hex64(txid):
+        raise HTTPException(status_code=404, detail='txid must be 64 hex characters')
     tx = await safe_call('getrawtransaction', [txid, 1])
     if not tx:
         raise HTTPException(status_code=404, detail='transaction not found')
@@ -800,6 +918,8 @@ async def build_verification(txid: str):
         'flow': flow,
         'zap1_anchor': zap1,
         'vault': None,
+        'vault_status': 'stub',
+        'vault_message': 'tx-addressable vault matching is not implemented yet',
         'zeven_event': zeven,
         'size': tx.get('size'),
         'version': tx.get('version'),
@@ -828,7 +948,7 @@ async def verify_view(request: Request, q: str = ''):
 
 @app.get('/api/verify/{txid}')
 async def api_verify(txid: str):
-    if len(txid) != 64 or not all(c in '0123456789abcdef' for c in txid.lower()):
+    if not is_hex64(txid):
         return JSONResponse(status_code=400, content={'error': 'txid must be 64 hex characters'})
     result = await build_verification(txid)
     if result is None:
@@ -907,6 +1027,8 @@ async def zcash_block(request: Request, hash_or_height: str):
     if hash_or_height.isdigit():
         h_hash = await safe_call_on('zcash', 'getblockhash', [int(hash_or_height)])
     else:
+        if not is_hex64(hash_or_height):
+            raise HTTPException(status_code=404, detail='block hash must be 64 hex characters or a decimal height')
         h_hash = hash_or_height
     if not h_hash:
         raise HTTPException(status_code=404, detail='block not found on zcash mainnet')
@@ -937,6 +1059,8 @@ async def zcash_block(request: Request, hash_or_height: str):
 
 @app.get('/z/tx/{txid}')
 async def zcash_tx(request: Request, txid: str):
+    if not is_hex64(txid):
+        raise HTTPException(status_code=404, detail='txid must be 64 hex characters')
     tx = await safe_call_on('zcash', 'getrawtransaction', [txid, 1])
     if not tx:
         raise HTTPException(status_code=404, detail='transaction not found on zcash mainnet')
@@ -1042,7 +1166,7 @@ async def zcash_verify_view(request: Request, q: str = ''):
     result = None
     error = None
     if q:
-        if len(q) != 64 or not all(c in '0123456789abcdef' for c in q.lower()):
+        if not is_hex64(q):
             error = 'txid must be 64 hex characters'
         else:
             tx = await safe_call_on('zcash', 'getrawtransaction', [q, 1])
@@ -1205,6 +1329,8 @@ async def api_zcash_block(hash_or_height: str):
     if hash_or_height.isdigit():
         h_hash = await safe_call_on("zcash", "getblockhash", [int(hash_or_height)])
     else:
+        if not is_hex64(hash_or_height):
+            return JSONResponse(status_code=400, content={"error": "block hash must be 64 hex characters or a decimal height"})
         h_hash = hash_or_height
     if not h_hash:
         return JSONResponse(status_code=404, content={"error": "not found"})
@@ -1216,6 +1342,8 @@ async def api_zcash_block(hash_or_height: str):
 
 @app.get("/api/z/tx/{txid}")
 async def api_zcash_tx(txid: str):
+    if not is_hex64(txid):
+        return JSONResponse(status_code=400, content={"error": "txid must be 64 hex characters"})
     tx = await safe_call_on("zcash", "getrawtransaction", [txid, 1])
     if not tx:
         return JSONResponse(status_code=404, content={"error": "not found"})
@@ -1236,7 +1364,7 @@ async def api_zcash_pool(pool_id: str):
 
 @app.get("/api/z/verify/{txid}")
 async def api_zcash_verify(txid: str):
-    if len(txid) != 64 or not all(c in "0123456789abcdef" for c in txid.lower()):
+    if not is_hex64(txid):
         return JSONResponse(status_code=400, content={"error": "txid must be 64 hex"})
     tx = await safe_call_on("zcash", "getrawtransaction", [txid, 1])
     if not tx:

@@ -3,6 +3,7 @@
 {% block content %}
 <h2>shieldedvault agents on ctaz</h2>
 <p class='muted'>shieldedvault is a custody agent standard for autonomous wallets that hold capital, act under policy, and leave an auditable proof trail. the standard composes zcash-ika (split-key custody), frost threshold signing, zap1 attestation, and mempalace continuity memory. specification at <a href='https://github.com/Frontier-Compute/shieldedvault-spec' target='_blank' rel='noopener'>shieldedvault-spec</a>.</p>
+<p class='muted'>this page lists vault registry rows only. tx-to-vault badge rendering on <a href='/verify'>/verify</a> stays stubbed until the registry carries tx-addressable origin data.</p>
 
 <h3>registered vaults</h3>
 {% if vaults %}
@@ -20,7 +21,7 @@
 </tbody>
 </table>
 {% else %}
-<p class='muted'>no shieldedvault agents registered on ctaz s1 feature net yet. vault badge rendering is stubbed, awaiting a tx-addressable vault schema. a vault-origin transaction on this chain will appear here automatically. the standard ships as <strong>ShieldedVault</strong> on zcash mainnet with 5 properties enforced. product at <a href='https://frontiercompute.cash' rel='noopener'>frontiercompute.cash</a>, open spec at <a href='https://github.com/Frontier-Compute/shieldedvault-spec' target='_blank' rel='noopener'>shieldedvault-spec</a>, <code>npx create-shieldedvault my-agent</code> to start.</p>
+<p class='muted'>no shieldedvault agents registered on ctaz s1 feature net yet. when the registry starts filling, this page will list the rows directly. tx badge rendering stays stubbed until a tx-addressable vault schema exists. the standard ships as <strong>ShieldedVault</strong> on zcash mainnet with 5 properties enforced. product at <a href='https://frontiercompute.cash' rel='noopener'>frontiercompute.cash</a>, open spec at <a href='https://github.com/Frontier-Compute/shieldedvault-spec' target='_blank' rel='noopener'>shieldedvault-spec</a>, <code>npx create-shieldedvault my-agent</code> to start.</p>
 {% endif %}
 
 <h3>json</h3>

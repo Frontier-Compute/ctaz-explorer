@@ -2,6 +2,12 @@
 {% block title %}{{ status_code }} · ctaz-explorer{% endblock %}
 {% block content %}
 <h2>{{ status_code }}</h2>
+<div class='card'>
+<div class='card-head'>
+<div class='card-title'>request failed</div>
+<span class='pool-tag'>{{ status_code }}</span>
+</div>
 <p class='muted'>{{ message }}</p>
 <p class='muted'><a href='/'>back to chain</a> · <a href='/z'>mainnet</a> · <a href='/verify'>verify a txid</a></p>
+</div>
 {% endblock %}
