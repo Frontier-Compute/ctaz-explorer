@@ -92,31 +92,63 @@ import time as _time
 
 _pool_cache = {}
 _POOL_CACHE_TTL = 30
+_POOL_CACHE_BUCKET_SIZE = 10
+_POOL_HISTORY_RPC_CONCURRENCY = 20
 
 async def cached_pool_history(pool_id: str, tip: int, chain_key: str = 'ctaz'):
-    key = f'{chain_key}:{pool_id}:{tip}'
     now = _time.time()
-    if key in _pool_cache and (now - _pool_cache[key][0]) < _POOL_CACHE_TTL:
-        return _pool_cache[key][1]
-    if chain_key == 'ctaz':
-        series = await cached_pool_history(pool_id, tip, 'ctaz')
-    else:
-        series = await fetch_pool_history_chain(pool_id, tip, chain_key)
-    _pool_cache[key] = (now, series)
+    tip_bucket = tip // _POOL_CACHE_BUCKET_SIZE
+    for bucket in (tip_bucket, tip_bucket - 1):
+        if bucket < 0:
+            continue
+        key = (pool_id, bucket, chain_key)
+        entry = _pool_cache.get(key)
+        if not entry:
+            continue
+        if (now - entry['cached_at']) >= _POOL_CACHE_TTL:
+            _pool_cache.pop(key, None)
+            continue
+        if 0 <= (tip - entry['tip']) <= _POOL_CACHE_BUCKET_SIZE:
+            return entry['series']
+    series = await fetch_pool_history_chain(pool_id, tip, chain_key)
+    _pool_cache[(pool_id, tip_bucket, chain_key)] = {
+        'cached_at': now,
+        'tip': tip,
+        'series': series,
+    }
     return series
 
 
 async def fetch_pool_history_chain(pool_id: str, tip: int, chain_key: str, window: int = POOL_HISTORY_WINDOW):
     start = max(0, tip - window + 1)
     heights = list(range(start, tip + 1))
-    sem = asyncio.Semaphore(20)
-    async def fetch(h):
+    rpc_call = safe_call if chain_key == 'ctaz' else lambda method, params=None: safe_call_on(chain_key, method, params)
+    blocks = await fetch_blocks_by_height_range(
+        heights,
+        rpc_call,
+    )
+    return build_pool_history_series(pool_id, heights, blocks)
+
+
+async def fetch_blocks_by_height_range(heights, rpc_call):
+    sem = asyncio.Semaphore(_POOL_HISTORY_RPC_CONCURRENCY)
+
+    async def fetch_hash(height):
         async with sem:
-            h_hash = await safe_call_on(chain_key, 'getblockhash', [h])
-            if not h_hash:
-                return None
-            return await safe_call_on(chain_key, 'getblock', [h_hash, 1])
-    blocks = await asyncio.gather(*[fetch(h) for h in heights])
+            return await rpc_call('getblockhash', [height])
+
+    block_hashes = await asyncio.gather(*(fetch_hash(height) for height in heights))
+
+    async def fetch_block(block_hash):
+        if not block_hash:
+            return None
+        async with sem:
+            return await rpc_call('getblock', [block_hash, 1])
+
+    return await asyncio.gather(*(fetch_block(block_hash) for block_hash in block_hashes))
+
+
+def build_pool_history_series(pool_id: str, heights, blocks):
     series = []
     for h, block in zip(heights, blocks):
         if not block:
