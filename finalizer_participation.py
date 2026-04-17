@@ -50,6 +50,8 @@ class ParticipationTracker:
         self.certs_seen: dict[str, dict[str, Any]] = {}
         self.finalizer_hits: dict[str, int] = {}
         self.pos_finalization_events: list[dict[str, Any]] = []
+        self.height_hash_history: dict[int, str] = {}
+        self.reorg_events: list[dict[str, Any]] = []
         self.started_at: float = time.time()
         self.last_poll_at: float | None = None
         self.last_poll_ok: bool | None = None
@@ -68,6 +70,8 @@ class ParticipationTracker:
             self.certs_seen = raw.get('certs_seen', {})
             self.finalizer_hits = raw.get('finalizer_hits', {})
             self.pos_finalization_events = raw.get('pos_finalization_events', [])
+            self.height_hash_history = {int(k): v for k, v in (raw.get('height_hash_history') or {}).items()}
+            self.reorg_events = raw.get('reorg_events', [])
             self.started_at = raw.get('started_at', time.time())
         except Exception:
             pass
@@ -80,6 +84,8 @@ class ParticipationTracker:
                 'certs_seen': self.certs_seen,
                 'finalizer_hits': self.finalizer_hits,
                 'pos_finalization_events': self.pos_finalization_events,
+                'height_hash_history': {str(k): v for k, v in self.height_hash_history.items()},
+                'reorg_events': self.reorg_events,
                 'started_at': self.started_at,
             }))
             tmp.replace(STATE_PATH)
@@ -149,6 +155,30 @@ class ParticipationTracker:
                 'pos_height': pos_height,
                 'finalized_pow_height': finalized_pow_height,
             }
+            finalized_for_reorg = finalized_pow_height
+            if finalized_for_reorg is not None:
+                try:
+                    hash_r = await self._client.post(RPC_URL, json={
+                        'jsonrpc': '2.0', 'method': 'getblockhash',
+                        'params': [int(finalized_for_reorg)], 'id': 1,
+                    })
+                    hash_r.raise_for_status()
+                    hash_data = hash_r.json()
+                    current_hash = hash_data.get('result')
+                    if current_hash:
+                        prior_hash = self.height_hash_history.get(int(finalized_for_reorg))
+                        if prior_hash is not None and prior_hash != current_hash:
+                            self.reorg_events.append({
+                                'height': int(finalized_for_reorg),
+                                'prior_hash': prior_hash,
+                                'new_hash': current_hash,
+                                'observed_at': self.last_poll_at,
+                            })
+                            if len(self.reorg_events) > 200:
+                                self.reorg_events = self.reorg_events[-200:]
+                        self.height_hash_history[int(finalized_for_reorg)] = current_hash
+                except Exception:
+                    pass
             if pos_height is not None:
                 self.pos_finalization_events.append({
                     'pos_height': pos_height,
@@ -302,6 +332,14 @@ class ParticipationTracker:
             'degraded_threshold': median - degraded_delta,
             'sparkline': sparkline,
             'events': window,
+        }
+
+    def get_reorg_summary(self) -> dict[str, Any]:
+        """Return observer-local reorg count and recent events."""
+        return {
+            'total_observed': len(self.reorg_events),
+            'recent': self.reorg_events[-5:],
+            'heights_tracked': len(self.height_hash_history),
         }
 
     def get_stats(self) -> dict[str, Any]:

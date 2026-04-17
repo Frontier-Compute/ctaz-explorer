@@ -16,6 +16,10 @@
   <div class="stat"><div class="label">window min/max</div><div class="value">{{ health.min_signers }}/{{ health.max_signers }}</div></div>
   <div class="stat"><div class="label">window size</div><div class="value">{{ health.window_size }}<span class="unit">certs</span></div></div>
   {% endif %}
+  {% if reorgs %}
+  <div class="stat"><div class="label">reorgs observed</div><div class="value">{{ reorgs.total_observed }}<span class="unit">since tracker start</span></div></div>
+  <div class="stat"><div class="label">heights tracked</div><div class="value">{{ reorgs.heights_tracked }}</div></div>
+  {% endif %}
 </section>
 
 {% if health and health.total_events > 0 %}
@@ -45,6 +49,24 @@
 
 <h3>json api</h3>
 <p class="muted">programmatic at <code>/api/chain-health</code>. returns <code>{tip, peers, finalized_height, health: {latest_signer_count, median_signers, degraded, sparkline, ...}}</code>. curl-friendly, no auth, no rate limit.</p>
+
+{% if reorgs and reorgs.recent %}
+<h3>recent reorg observations</h3>
+<p class="muted">each entry is a height where our node saw the block hash change after first observation. observer-local count, not a chain-wide sidechain census (that would need a getchaintips-style rpc which zebra-crosslink does not expose).</p>
+<table class="blocks">
+<thead><tr><th>height</th><th>prior hash</th><th>new hash</th><th>seen</th></tr></thead>
+<tbody>
+{% for r in reorgs.recent | reverse %}
+<tr>
+<td><a href="/block/{{ r.height }}">{{ r.height }}</a></td>
+<td class="hash">{{ r.prior_hash[:20] }}…</td>
+<td class="hash">{{ r.new_hash[:20] }}…</td>
+<td class="muted">{{ r.observed_at | ago if r.observed_at else "—" }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% endif %}
 
 <h3>what this catches</h3>
 <p class="muted">when a server node falls behind on bft and wallets syncing from that node start diverging into sidechains, the live cert signer count typically dips below the recent median. this page surfaces that dip programmatically. for node-state recovery snapshots see community endpoints in the crosslink updates channel. for canonical-chain fork detection see <a href="/sync-check">/sync-check</a>.</p>

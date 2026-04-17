@@ -2042,6 +2042,7 @@ async def chain_health_view(request: Request):
         'finalized_height': finalized_height,
         'finality_gap': finality_gap,
         'health': health,
+        'reorgs': get_tracker().get_reorg_summary(),
         'auto_refresh_s': 20,
     })
 
