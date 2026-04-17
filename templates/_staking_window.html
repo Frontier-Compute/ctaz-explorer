@@ -5,7 +5,7 @@
     <div class="sw-window" style="width: {{ (staking.window_size * 100 // staking.cycle_size) }}%"></div>
     <div class="sw-marker" style="left: {{ (staking.cycle_pos * 100 // staking.cycle_size) }}%"></div>
   </div>
-  <div class="sw-caption">
+  <div class="sw-caption" aria-live="polite">
     cycle pos {{ staking.cycle_pos }}/{{ staking.cycle_size }}
     {% if staking.live %}<span class="sw-live">staking day LIVE</span>, {{ staking.blocks_remaining }} block{% if staking.blocks_remaining != 1 %}s{% endif %} left in window
     {% else %}inactive, next window in {{ staking.next_in }} block{% if staking.next_in != 1 %}s{% endif %}

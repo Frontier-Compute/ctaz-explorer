@@ -1126,3 +1126,114 @@ code.fpk {
   color: #b37a00;
   font-weight: 600;
 }
+
+/* ==== jony polish v1 ==== */
+:root {
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --ease-soft: cubic-bezier(0.32, 0.72, 0, 1);
+  --shadow-soft: 0 1px 2px rgba(26,26,26,0.04), 0 2px 8px rgba(26,26,26,0.03);
+  --shadow-lift: 0 2px 6px rgba(26,26,26,0.06), 0 8px 24px rgba(26,26,26,0.06);
+}
+.jony-polish-v1 { }
+
+/* typography rhythm */
+body { font-feature-settings: "ss01" on, "cv11" on; letter-spacing: -0.003em; }
+h1 { font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
+h2 { font-weight: 500; letter-spacing: -0.012em; line-height: 1.25; margin-top: 0.25em; }
+h3 { font-weight: 500; letter-spacing: -0.008em; }
+p { line-height: 1.55; }
+.muted { letter-spacing: 0.005em; }
+
+/* links: default subtle, hover precise */
+main a { transition: color 120ms var(--ease-soft), text-decoration-color 120ms var(--ease-soft); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+main a:hover { text-decoration-thickness: 1.5px; }
+
+/* stats grid: elevated cards with micro-hover */
+.stats .stat {
+  box-shadow: var(--shadow-soft);
+  transition: transform 180ms var(--ease-soft), box-shadow 180ms var(--ease-soft), border-color 180ms var(--ease-soft);
+}
+.stats .stat:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lift);
+  border-color: var(--border-hover);
+}
+
+/* chain-block refinement */
+.chain-block {
+  transition: border-color 160ms var(--ease-soft), background 160ms var(--ease-soft), transform 160ms var(--ease-soft), box-shadow 160ms var(--ease-soft);
+}
+.chain-block:hover {
+  transform: translateY(-0.5px);
+  box-shadow: var(--shadow-soft);
+}
+.chain-block.tip {
+  animation: tip-pulse 3.6s var(--ease-soft) infinite;
+}
+@keyframes tip-pulse {
+  0%, 100% { box-shadow: 0 1px 0 rgba(26,26,26,0.06), 0 0 0 0 rgba(244,183,40,0.18); }
+  50%      { box-shadow: 0 1px 0 rgba(26,26,26,0.06), 0 0 0 6px rgba(244,183,40,0.08); }
+}
+
+/* pos-marker + connector subtleties */
+.pos-marker { transition: border-color 160ms var(--ease-soft), background 160ms var(--ease-soft); }
+.pos-connector { opacity: 0.72; }
+
+/* staking-window polished: soft gradient, live pulse, refined typography */
+.staking-window {
+  box-shadow: var(--shadow-soft);
+  transition: box-shadow 200ms var(--ease-soft);
+}
+.staking-window:hover { box-shadow: var(--shadow-lift); }
+.sw-track {
+  box-shadow: inset 0 1px 2px rgba(26,26,26,0.04);
+}
+.sw-marker {
+  transition: left 360ms var(--ease-soft);
+  border-radius: 1px;
+}
+.sw-live { animation: sw-live-pulse 2.4s var(--ease-soft) infinite; }
+@keyframes sw-live-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+/* bft-tip-card + chain-and-bft alignment refinement */
+.bft-tip-card { box-shadow: var(--shadow-soft); transition: box-shadow 200ms var(--ease-soft); }
+.bft-tip-card:hover { box-shadow: var(--shadow-lift); }
+.chain-and-bft-header { transition: background 160ms var(--ease-soft); }
+
+/* family-eyebrow: understated but visually guiding the eye */
+.family-eyebrow {
+  transition: background 200ms var(--ease-soft), border-color 200ms var(--ease-soft);
+}
+.family-eyebrow:hover { background: #fbf6e0; border-left-color: #d9c97b; }
+
+/* nav: tighter rhythm */
+header nav a { transition: color 120ms var(--ease-soft); }
+
+/* search input: subtle focus ring */
+form.search input[type="text"] {
+  transition: border-color 160ms var(--ease-soft), box-shadow 160ms var(--ease-soft);
+}
+form.search input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent, #f4b728);
+  box-shadow: 0 0 0 3px rgba(244,183,40,0.15);
+}
+
+/* table row hover */
+table.blocks tr { transition: background 120ms var(--ease-soft); }
+table.blocks tbody tr:hover { background: #fbf8ef; }
+
+/* honor reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}
+/* ==== end jony polish v1 ==== */
