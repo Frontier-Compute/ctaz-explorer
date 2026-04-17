@@ -921,3 +921,86 @@ code.fpk {
   color: #8a8577;
   text-align: right;
 }
+
+.chain-and-bft {
+  display: flex;
+  gap: 2.5rem;
+  align-items: flex-start;
+  justify-content: center;
+  margin: 1rem 0 1.5rem;
+  flex-wrap: wrap;
+}
+.chain-and-bft-pow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.chain-and-bft-bft {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 1.5rem;
+}
+.chain-and-bft-header {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8a8577;
+  margin-bottom: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  background: #f0ece0;
+}
+.chain-and-bft-header.bft {
+  background: #fff3cf;
+  color: #7a5e0a;
+}
+.bft-tip-card {
+  min-width: 200px;
+  padding: 1.1rem 1.3rem;
+  border: 2px solid var(--gold-border);
+  border-radius: 8px;
+  background: #fffaeb;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.bft-label {
+  font-size: 0.72rem;
+  color: #8a8577;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.bft-height {
+  font-size: 1.55rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0.5rem 0 0.3rem;
+}
+.bft-signers {
+  font-size: 0.8rem;
+  color: #6b6555;
+}
+.bft-links {
+  font-size: 0.78rem;
+  color: #4a4436;
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed #d9c97b;
+}
+.bft-links a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.bft-gap {
+  font-size: 0.72rem;
+  color: #8a8577;
+  margin-top: 0.3rem;
+  font-style: italic;
+}
+@media (max-width: 640px) {
+  .chain-and-bft { gap: 1rem; }
+  .chain-and-bft-bft { padding-top: 0; }
+  .bft-tip-card { min-width: 160px; }
+}
