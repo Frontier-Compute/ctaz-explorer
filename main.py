@@ -2184,3 +2184,54 @@ async def staking_guide_view(request: Request):
         'staking': staking,
         'auto_refresh_s': 60,
     })
+
+@app.get('/metrics')
+async def prometheus_metrics():
+    from fastapi.responses import PlainTextResponse
+    info, final_hh = await asyncio.gather(
+        safe_call('getinfo'),
+        safe_call('get_tfl_final_block_height_and_hash'),
+    )
+    info = info or {}
+    tip = info.get('blocks') or 0
+    peers = info.get('connections') or 0
+    finalized = final_hh.get('height') if final_hh and isinstance(final_hh, dict) else None
+    finality_gap = (tip - finalized) if finalized is not None else 0
+    tracker = get_tracker()
+    health = tracker.get_chain_health()
+    reorgs = tracker.get_reorg_summary()
+    silent = tracker.get_silent_finalizers()
+    staking = staking_day_state(tip)
+    lines = []
+    def g(name, value, help_text, metric_type='gauge'):
+        lines.append(f'# HELP ctaz_{name} {help_text}')
+        lines.append(f'# TYPE ctaz_{name} {metric_type}')
+        lines.append(f'ctaz_{name} {value}')
+    g('pow_tip', tip, 'latest pow block height seen by this node')
+    g('pow_finalized', finalized or 0, 'latest bft-finalized pow block height')
+    g('pow_finality_gap_blocks', finality_gap, 'pow blocks between finalized tip and pow tip')
+    g('peers', peers, 'number of p2p peers currently connected')
+    g('tracker_certs_observed', len(tracker.certs_seen), 'distinct bft certs this tracker has observed since start')
+    g('tracker_pos_events', len(tracker.pos_finalization_events), 'pos finalization events recorded')
+    g('tracker_heights_tracked', len(tracker.height_hash_history), 'pow heights the reorg detector is tracking')
+    g('reorgs_observed_total', reorgs.get('total_observed', 0), 'reorgs observed by this node since tracker start', 'counter')
+    g('finalizers_silent', len(silent), 'finalizers who signed at least once but have been absent 50 plus observed certs')
+    if health and 'latest_signer_count' in health:
+        g('bft_latest_signers', health.get('latest_signer_count', 0), 'signer count on the latest observed bft cert')
+        g('bft_median_signers', health.get('median_signers', 0), 'median signer count over recent window')
+        g('bft_min_signers', health.get('min_signers', 0), 'min signer count over recent window')
+        g('bft_max_signers', health.get('max_signers', 0), 'max signer count over recent window')
+        g('bft_latest_degraded', 1 if health.get('degraded') else 0, '1 if the latest cert signer count is below the degraded threshold')
+        g('bft_latest_pos_height', health.get('latest_pos_height', 0), 'pos height of the latest observed bft cert')
+    if staking:
+        g('staking_cycle_pos', staking.get('cycle_pos', 0), 'position inside the 150-block staking cycle')
+        g('staking_window_live', 1 if staking.get('live') else 0, '1 if the 70-block staking window is currently open')
+        if staking.get('blocks_remaining') is not None:
+            g('staking_blocks_remaining', staking['blocks_remaining'], 'pow blocks left in the current staking window')
+        if staking.get('next_in') is not None:
+            g('staking_next_window_in', staking['next_in'], 'pow blocks until the next staking window opens')
+    roster = await safe_call('get_tfl_roster_zats') or []
+    g('finalizers_active', len(roster), 'size of the active finalizer roster')
+    total_vp = sum(int(m.get('voting_power', 0)) for m in roster)
+    g('stake_total_zats', total_vp, 'sum of voting_power across the active roster in zatoshis')
+    return PlainTextResponse('\n'.join(lines) + '\n', media_type='text/plain; version=0.0.4; charset=utf-8')
