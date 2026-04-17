@@ -3,7 +3,7 @@
 {% block content %}
 
 <h2>for developers</h2>
-<p class="muted">everything on this explorer is open, scriptable, and attributable. this page is the hub for devs integrating the data or the broader attestation and custody stack it comes from.</p>
+<p class="muted">open apis, no auth, no rate limit, no key. everything scriptable, everything linkable, everything verifiable against the source.</p>
 
 <h3>live apis on this node</h3>
 <table class="blocks">
@@ -12,48 +12,43 @@
 <tr><td><code><a href="/api/tip">/api/tip</a></code></td><td>current pow tip</td></tr>
 <tr><td><code><a href="/api/params">/api/params</a></code></td><td>protocol parameters reported by the node</td></tr>
 <tr><td><code><a href="/api/anchors">/api/anchors</a></code></td><td>zap1 attestation anchor registry on ctaz</td></tr>
-<tr><td><code>/api/verify/&lt;txid&gt;</code></td><td>live zap1 attestation lookup for a given zcash mainnet txid</td></tr>
-<tr><td><code>/api/sync-check/&lt;height&gt;/&lt;hash&gt;</code></td><td>canonical comparison, returns match + our_tip + our_peers</td></tr>
+<tr><td><code>/api/verify/&lt;txid&gt;</code></td><td>zap1 attestation lookup for a zcash mainnet txid</td></tr>
+<tr><td><code>/api/sync-check/&lt;height&gt;/&lt;hash&gt;</code></td><td>canonical comparison against this node</td></tr>
 <tr><td><code><a href="/api/chain-health">/api/chain-health</a></code></td><td>bft signer health, reorg counter, silent finalizers, version fingerprint</td></tr>
-<tr><td><code><a href="/api/pool/orchard">/api/pool/orchard</a></code></td><td>per-block pool history, cached, parallel-fetched</td></tr>
-<tr><td><code><a href="/metrics">/metrics</a></code></td><td>prometheus exporter, 20+ ctaz_ prefixed gauges and counters</td></tr>
+<tr><td><code><a href="/api/pool/orchard">/api/pool/orchard</a></code></td><td>per-block pool history</td></tr>
+<tr><td><code><a href="/metrics">/metrics</a></code></td><td>prometheus exporter, 20+ <code>ctaz_</code> gauges and counters</td></tr>
 </tbody>
 </table>
-<p class="muted">no auth, no api key, no rate limit. all ssr, curl-friendly.</p>
 
-<h3>observability kit</h3>
-<p class="muted">pre-configured grafana dashboard at <a href="/static/ctaz-crosslink-grafana.json" download>ctaz-crosslink-grafana.json</a>. import into grafana and point at a prometheus scraping <code>/metrics</code>. scrape config and alert rule suggestions on the <a href="/guide/metrics">metrics guide</a>.</p>
+<h3>observability</h3>
+<p class="muted">preconfigured grafana dashboard at <a href="/static/ctaz-crosslink-grafana.json" download>ctaz-crosslink-grafana.json</a>. import into grafana pointed at a prometheus scraping <code>/metrics</code>. scrape config and alert rules on the <a href="/guide/metrics">metrics guide</a>.</p>
 
-<h3>open source</h3>
-<p class="muted">explorer source at <a href="https://github.com/Frontier-Compute/ctaz-explorer" rel="noopener">Frontier-Compute/ctaz-explorer</a>, mit license. clone it, point at any crosslink node rpc, run the same pages. no proprietary deps, fastapi and jinja.</p>
+<h3>source</h3>
+<p class="muted">explorer at <a href="https://github.com/Frontier-Compute/ctaz-explorer" rel="noopener">github.com/Frontier-Compute/ctaz-explorer</a>, mit licensed, fastapi and jinja, no proprietary dependencies.</p>
 
-<h3>upstream contributions</h3>
-<p class="muted">upstream crosslink work shipped today on the <code>s1_dev</code> branch of <a href="https://github.com/ShieldedLabs/crosslink_monolith" rel="noopener">ShieldedLabs/crosslink_monolith</a>:</p>
+<h3>upstream crosslink contributions</h3>
 <ul>
 <li><a href="https://github.com/ShieldedLabs/crosslink_monolith/pull/17" rel="noopener">PR #17</a> wallet: move sleep inside mempool_reconnect loop, with cargo test</li>
-<li><a href="https://github.com/ShieldedLabs/crosslink_monolith/pull/18" rel="noopener">PR #18</a> wallet: stake_orchard_to_finalizer_batch helper for sequential multi-bond staking</li>
+<li><a href="https://github.com/ShieldedLabs/crosslink_monolith/pull/18" rel="noopener">PR #18</a> wallet: stake_orchard_to_finalizer_batch helper</li>
 <li><a href="https://github.com/ShieldedLabs/crosslink_monolith/pull/19" rel="noopener">PR #19</a> docs: crosslink chain semantics reference</li>
-<li><a href="https://github.com/ShieldedLabs/crosslink_monolith/pull/20" rel="noopener">PR #20</a> staking-cli: sequential multi-bond stake cli on top of the batch helper</li>
+<li><a href="https://github.com/ShieldedLabs/crosslink_monolith/pull/20" rel="noopener">PR #20</a> staking-cli: sequential multi-bond stake cli</li>
 </ul>
 
-<h3>if you are building on zcash attestation</h3>
-<p class="muted">the <a href="/anchors">/anchors</a> view and <code>/api/verify/&lt;txid&gt;</code> endpoint on this explorer are powered by zap1, an open attestation protocol anchored on zcash mainnet with ~3,000 npm installs per month across its client packages. full api at <a href="https://api.frontiercompute.cash/docs/" rel="noopener">api.frontiercompute.cash/docs</a>, spec at <a href="https://api.frontiercompute.cash/openapi/zap1.yaml" rel="noopener">openapi/zap1.yaml</a>. deployed on eth l1, arbitrum, base, hyperliquid, near, sui.</p>
+<h3>related open work this explorer builds on</h3>
+<p class="muted">the attestation surface at <code>/anchors</code> and <code>/api/verify</code> uses zap1, an open attestation standard anchored on zcash mainnet. protocol docs at <a href="https://api.frontiercompute.cash/docs/" rel="noopener">api.frontiercompute.cash/docs</a>, openapi at <a href="https://api.frontiercompute.cash/openapi/zap1.yaml" rel="noopener">/openapi/zap1.yaml</a>.</p>
+<p class="muted">the vault concept referenced at <a href="/vaults">/vaults</a> follows the shieldedvault standard, an open spec at <a href="https://github.com/Frontier-Compute/shieldedvault-spec" rel="noopener">github.com/Frontier-Compute/shieldedvault-spec</a>.</p>
 
-<h3>if you are running agents that hold capital</h3>
-<p class="muted"><a href="https://frontiercompute.cash" rel="noopener">shieldedvault</a> is a custody standard for agents where the agent cannot steal, cannot lie, cannot survive its owner. split-key mpc, zcash mainnet attestation, open spec. free tier available. <code>npx create-shieldedvault my-agent</code> to start.</p>
-
-<h3>npm packages</h3>
+<h3>published packages</h3>
 <table class="blocks">
-<thead><tr><th>package</th><th>use</th></tr></thead>
+<thead><tr><th>package</th><th>purpose</th></tr></thead>
 <tbody>
 <tr><td><code>zap1</code></td><td>attestation primitives client</td></tr>
-<tr><td><code>openclaw-zap1</code></td><td>zap1 anchor tooling and x402 integration</td></tr>
-<tr><td><code>zcash-mcp</code></td><td>mcp server for zcash (works with claude code, codex, custom agents)</td></tr>
+<tr><td><code>openclaw-zap1</code></td><td>zap1 anchor tooling</td></tr>
+<tr><td><code>zcash-mcp</code></td><td>mcp server for zcash</td></tr>
 <tr><td><code>zcash-ika</code></td><td>ika split-key wallet integration for zcash</td></tr>
-<tr><td><code>create-shieldedvault</code></td><td>scaffold a new shieldedvault agent</td></tr>
 </tbody>
 </table>
 
-<p class="muted" style="margin-top: 0.8rem">related: <a href="/guide/staking">staking guide</a>, <a href="/guide/metrics">metrics guide</a>, <a href="/why">why this explorer exists</a>, <a href="/chain-graph">chain graph</a>.</p>
+<p class="muted" style="margin-top: 0.8rem">related pages: <a href="/guide/staking">staking guide</a>, <a href="/guide/metrics">metrics guide</a>, <a href="/why">why this explorer exists</a>, <a href="/chain-graph">chain graph</a>.</p>
 
 {% endblock %}
