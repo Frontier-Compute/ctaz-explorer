@@ -6,6 +6,7 @@
 <title>{% block title %}ctaz-explorer{% endblock %}</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 rx=%272%27 fill=%27%23F4B728%27/%3E%3Ctext x=%273%27 y=%2712%27 font-family=%27ui-monospace,monospace%27 font-size=%2712%27 fill=%27%231a1a1a%27 font-weight=%27700%27%3Ec%3C/text%3E%3C/svg%3E">
 <link rel='stylesheet' href='/static/style.css?v=7c4e6bb-fixed'>
+{% if auto_refresh_s %}<meta http-equiv="refresh" content="{{ auto_refresh_s }}">{% endif %}
 <meta name="description" content="block explorer for the zcash crosslink season 1 feature net and zcash mainnet, maintained by zk-nd3r"><meta property="og:title" content="ctaz-explorer"><meta property="og:description" content="block explorer for the zcash crosslink season 1 feature net and zcash mainnet"><meta property="og:type" content="website"><meta property="og:url" content="https://ctaz.frontiercompute.cash"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="ctaz-explorer"><meta name="twitter:description" content="crosslink s1 feature net + zcash mainnet block explorer">
 </head>
 <body>

@@ -264,6 +264,27 @@ async def safe_call(method, params=None):
         return None
 
 
+
+
+async def get_bft_chain_tip():
+    import struct
+    fp = await safe_call('get_tfl_fat_pointer_to_bft_chain_tip')
+    if not fp:
+        return None
+    vote = fp.get('vote_for_block_without_finalizer_public_key') or []
+    if len(vote) < 44:
+        return None
+    try:
+        pos_height = struct.unpack('<Q', bytes(vote[32:40]))[0]
+    except Exception:
+        pos_height = None
+    signer_count = len(fp.get('signatures') or [])
+    return {
+        'pos_height': pos_height,
+        'signer_count': signer_count,
+    }
+
+
 async def safe_call_on(chain_key: str, method, params=None):
     chain = CHAINS.get(chain_key)
     if not chain:
@@ -380,14 +401,15 @@ def tx_value_flow(tx):
 
 @app.get('/')
 async def home(request: Request, order: str = 'desc'):
-    info, chaininfo, roster, final_hh = await asyncio.gather(
+    info, chaininfo, roster, final_hh, bft = await asyncio.gather(
         safe_call('getinfo'),
         safe_call('getblockchaininfo'),
         safe_call('get_tfl_roster_zats'),
         safe_call('get_tfl_final_block_height_and_hash'),
+        get_bft_chain_tip(),
     )
     if not info or not chaininfo:
-        raise HTTPException(status_code=503, detail='node not ready')
+        raise HTTPException(status_code=503, detail="node not ready")
     roster = roster or []
     tip = info['blocks']
     recent_raw = await asyncio.gather(*[fetch_recent_block_with_finality(h) for h in range(max(0, tip - 9), tip + 1)])
@@ -418,6 +440,8 @@ async def home(request: Request, order: str = 'desc'):
         'anchor_count': len(anchors),
         'vault_count': len(vaults),
         'event_count': len(events),
+        'auto_refresh_s': 30,
+        'bft': bft,
     })
 
 
