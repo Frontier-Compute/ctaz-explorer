@@ -2027,3 +2027,54 @@ async def api_chain_health():
         'finalized_height': (final_hh.get('height') if final_hh and isinstance(final_hh, dict) else None),
         'health': get_tracker().get_chain_health(),
     }
+
+@app.get('/finalizer/{pubkey}')
+async def finalizer_detail_view(request: Request, pubkey: str):
+    pubkey = pubkey.strip().lower()
+    if not pubkey or len(pubkey) < 4 or not all(c in '0123456789abcdef' for c in pubkey):
+        raise HTTPException(status_code=400, detail='pubkey must be hex')
+    roster = await safe_call('get_tfl_roster_zats') or []
+    roster_sorted = sorted(roster, key=lambda m: int(m.get('voting_power', 0)), reverse=True)
+    total_vp = sum(int(m.get('voting_power', 0)) for m in roster_sorted)
+    match = None
+    match_rank = None
+    match_node_pk = None
+    for i, m in enumerate(roster_sorted):
+        raw = m.get('pub_key') or ''
+        node_pk = reverse_hex(raw).lower()
+        if node_pk.startswith(pubkey) or raw.lower().startswith(pubkey):
+            match = m
+            match_rank = i + 1
+            match_node_pk = node_pk
+            break
+    if not match:
+        raise HTTPException(status_code=404, detail=f'finalizer not found for pubkey prefix {pubkey}')
+    tracker = get_tracker()
+    scorecard = tracker.get_scorecard()
+    sc = scorecard.get(match_node_pk)
+    labels = load_finalizer_labels()
+    label = labels.get(match_node_pk)
+    total_hits = tracker.finalizer_hits.get(match_node_pk, 0)
+    total_certs = len(tracker.certs_seen)
+    events = sorted(tracker.pos_finalization_events, key=lambda e: e.get('pos_height') or 0)
+    recent_window = events[-40:] if len(events) > 40 else events
+    signing_history = []
+    certs_sorted = sorted(tracker.certs_seen.values(), key=lambda c: c.get('first_seen_at') or 0)
+    recent_certs = certs_sorted[-40:] if len(certs_sorted) > 40 else certs_sorted
+    for c in recent_certs:
+        signers = c.get('signers') or []
+        signing_history.append(1 if match_node_pk in signers else 0)
+    return templates.TemplateResponse(request, 'finalizer-detail.html', {
+        'request': request,
+        'pubkey': match_node_pk,
+        'pubkey_short': match_node_pk[:20] + '…',
+        'label': label,
+        'rank': match_rank,
+        'stake_zats': int(match.get('voting_power', 0)),
+        'share': (int(match.get('voting_power', 0)) / total_vp) if total_vp > 0 else 0,
+        'scorecard': sc,
+        'total_hits': total_hits,
+        'total_certs': total_certs,
+        'signing_history': signing_history,
+        'auto_refresh_s': 30,
+    })

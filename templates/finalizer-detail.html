@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}finalizer {{ pubkey_short }}{% endblock %}
+{% block content %}
+
+<h2>finalizer detail</h2>
+
+<div class="detail">
+<dt>label</dt>
+<dd>{% if label %}<strong>{{ label.name }}</strong>{% if label.url %} <a href="{{ label.url }}" rel="noopener" class="muted">↗</a>{% endif %}{% else %}unlabeled <span class="muted">(opt-in only)</span>{% endif %}</dd>
+<dt>pub key</dt>
+<dd class="hash">{{ pubkey }}</dd>
+<dt>rank</dt>
+<dd>#{{ rank }}</dd>
+<dt>stake</dt>
+<dd>{{ stake_zats | ctaz }} ctaz <span class="muted">({{ "%.2f" | format(share * 100) }}%)</span></dd>
+</div>
+
+{% if scorecard %}
+<h3>participation scorecard</h3>
+<div class="detail">
+<dt>grade</dt>
+<dd><span class="grade grade-{{ scorecard.grade }}">{{ scorecard.grade }}</span></dd>
+<dt>overall rate</dt>
+<dd>{{ "%.1f" | format(scorecard.overall_rate * 100) }}% over {{ total_certs }} observed certs</dd>
+<dt>recent rate</dt>
+<dd>{{ "%.1f" | format(scorecard.recent_rate * 100) }}% in the recent window</dd>
+<dt>trend</dt>
+<dd><span class="trend trend-{{ scorecard.trend }}">{% if scorecard.trend == 'up' %}↗ improving{% elif scorecard.trend == 'down' %}↘ declining{% else %}→ steady{% endif %}</span></dd>
+<dt>last seen</dt>
+<dd>{% if scorecard.last_seen_ago is not none %}{% if scorecard.last_seen_ago == 0 %}current cert{% else %}{{ scorecard.last_seen_ago }} cert{% if scorecard.last_seen_ago != 1 %}s{% endif %} ago{% endif %}{% else %}never signed an observed cert{% endif %}</dd>
+<dt>certs signed</dt>
+<dd>{{ total_hits }} of {{ total_certs }}</dd>
+</div>
+
+<h3>signing pattern over recent window</h3>
+<p class="muted">each bar represents one observed cert in chronological order, oldest on left, newest on right. tall bar means this finalizer signed; short bar means absent. absence does not mean offline since each cert carries only the quorum minimum signers.</p>
+<div class="sparkline" aria-label="signing pattern">
+{% for v in signing_history %}
+  <div class="spark-bar" style="height: {% if v == 1 %}100{% else %}8{% endif %}%" title="{% if v == 1 %}signed{% else %}not packed into this cert{% endif %}"></div>
+{% endfor %}
+</div>
+{% else %}
+<h3>participation</h3>
+<p class="muted">no observed cert signings recorded by the local tracker yet. the tracker started fresh earlier today and accumulates as new bft certs land. check back after more observation time, or compare with <a href="/finalizers/participation">/finalizers/participation</a>.</p>
+{% endif %}
+
+<h3>how to read this</h3>
+<p class="muted">this page is the operator-facing uptime receipt. grade is a simple bucket from overall participation rate. absence from a cert does not always mean offline: each cert carries the quorum minimum signer set, and low-stake finalizers are less frequently packed in. a healthy small-stake finalizer can show a lower overall rate than a healthy large-stake finalizer purely from structural sampling bias. the trend line and last-seen indicator are the most reliable health signals.</p>
+
+<p class="muted" style="margin-top: 0.8rem">links: <a href="/finalizers">/finalizers roster</a> · <a href="/finalizers/participation">participation dashboard</a> · <a href="/chain-health">chain health</a></p>
+
+{% endblock %}
