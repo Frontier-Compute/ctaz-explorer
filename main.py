@@ -266,6 +266,32 @@ async def safe_call(method, params=None):
 
 
 
+
+STAKING_CYCLE_BLOCKS = 150
+STAKING_WINDOW_BLOCKS = 70
+
+
+def staking_day_state(tip: int):
+    """per workshop faq: 70-block window out of every 150 pow blocks.
+    assumes cycle starts at block 0. offset may shift; label as approximate.
+    """
+    try:
+        t = int(tip)
+    except Exception:
+        return None
+    cycle_pos = t % STAKING_CYCLE_BLOCKS
+    if cycle_pos < STAKING_WINDOW_BLOCKS:
+        return {
+            'live': True,
+            'blocks_remaining': STAKING_WINDOW_BLOCKS - cycle_pos,
+            'next_in': None,
+        }
+    return {
+        'live': False,
+        'blocks_remaining': None,
+        'next_in': STAKING_CYCLE_BLOCKS - cycle_pos,
+    }
+
 async def get_bft_chain_tip():
     import struct
     fp = await safe_call('get_tfl_fat_pointer_to_bft_chain_tip')
@@ -443,6 +469,7 @@ async def home(request: Request, order: str = 'asc'):
         'auto_refresh_s': 30,
         'bft': bft,
         'pow_pos_map': get_tracker().get_pow_to_pos_map([b['height'] for b in recent]),
+        'staking': staking_day_state(tip),
     })
 
 
