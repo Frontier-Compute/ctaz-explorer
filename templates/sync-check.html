@@ -19,7 +19,7 @@
 {% elif result.status == 'mismatch' %}
   <div class="sw-label">mismatch</div>
   <div class="sw-caption">at height <strong>{{ result.height }}</strong> our canonical hash is <code>{{ result.canonical_hash }}</code> but you reported <code>{{ result.your_hash }}</code>. one of the two nodes is on a sidechain.</div>
-  <p class="muted" style="font-size: 0.78rem; margin-top: 0.6rem">compare our peer count ({{ our_peers }}) and tip ({{ our_tip }}) to yours. if our peer count is substantially higher, we are likely canonical. to recover, consider loading a fresh snapshot from <a href="https://crosslink.cipherscan.app/bootstrap" rel="noopener">cipherscan bootstrap</a> or from the crosslink updates channel, then preserve your <code>secret.seed</code> across the cache swap.</p>
+  <p class="muted" style="font-size: 0.78rem; margin-top: 0.6rem">compare our peer count ({{ our_peers }}) and tip ({{ our_tip }}) to yours. if our peer count is substantially higher, we are likely canonical. to recover, consider loading a fresh snapshot from <a href="https://crosslink.cipherscan.app/bootstrap" rel="noopener">community snapshot endpoint</a> or from the crosslink updates channel, then preserve your <code>secret.seed</code> across the cache swap.</p>
 {% elif result.status == 'ahead' %}
   <div class="sw-label">ahead</div>
   <div class="sw-caption">{{ result.note }}</div>
@@ -40,6 +40,6 @@
 <p class="muted">programmatic: <code>/api/sync-check/&lt;height&gt;/&lt;your_hash&gt;</code>. returns <code>{height, canonical_hash, your_hash, match, our_tip, our_peers}</code>. curl-friendly, no auth, no rate limit.</p>
 
 <h3>context</h3>
-<p class="muted">multiple nodes in the crosslink season one feature net forked their own sidechains starting apr 17 following an upstream server node that fell behind after bft block 1337. if you have been stuck at the same height for an unusually long time or your miner keeps winning every block, check here first. recovery snapshots at <a href="https://crosslink.cipherscan.app/bootstrap" rel="noopener">cipherscan bootstrap</a> or in the crosslink updates channel.</p>
+<p class="muted">multiple nodes in the crosslink season one feature net forked their own sidechains starting apr 17 following an upstream server node that fell behind after bft block 1337. if you have been stuck at the same height for an unusually long time or your miner keeps winning every block, check here first. recovery snapshots at <a href="https://crosslink.cipherscan.app/bootstrap" rel="noopener">community snapshot endpoint</a> or in the crosslink updates channel.</p>
 
 {% endblock %}
