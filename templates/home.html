@@ -12,7 +12,7 @@
   <div class="stat"><div class="label">pos height</div><div class="value">{% if bft and bft.pos_height is not none %}{{ bft.pos_height }}{% else %}—{% endif %}</div></div>
   <div class="stat"><div class="label">bft signers (tip)</div><div class="value">{% if bft %}{{ bft.signer_count }}{% else %}—{% endif %}</div></div>
   <div class="stat"><div class="label">finalizers</div><div class="value">{{ roster | length }}</div></div>
-  <div class="stat"><div class="label">staking day</div><div class="value">{% if staking and staking.live %}<span style="color:#b37a00">live</span>{% else %}—{% endif %}<span class="unit">{% if staking and staking.live %}{{ staking.blocks_remaining }} block{% if staking.blocks_remaining != 1 %}s{% endif %} left{% elif staking %}next in {{ staking.next_in }}{% else %}—{% endif %}</span></div></div>
+  <div class="stat"><div class="label">staking day</div><div class="value">{% if staking and staking.live %}<span style="color:#b37a00">live</span>{% else %}—{% endif %}<span class="unit">{% if staking and staking.live %}{{ staking.blocks_remaining }} block{% if staking.blocks_remaining != 1 %}s{% endif %} left{% elif staking %}next in {{ staking.next_in }} block{% if staking.next_in != 1 %}s{% endif %}{% else %}—{% endif %}</span></div></div>
   <div class="stat"><div class="label">peers</div><div class="value">{{ connections }}</div></div>
   <div class="stat"><div class="label">stake total</div><div class="value">{{ "%.2f" | format(total_vp / 100000000) }}<span class="unit">ctaz</span></div></div>
 </section>
