@@ -1004,3 +1004,56 @@ code.fpk {
   .chain-and-bft-bft { padding-top: 0; }
   .bft-tip-card { min-width: 160px; }
 }
+
+.chain-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) 56px minmax(140px, 180px);
+  align-items: center;
+  column-gap: 0;
+  width: 100%;
+  max-width: 620px;
+}
+.pos-connector {
+  height: 2px;
+  background: repeating-linear-gradient(to right, #d9c97b 0, #d9c97b 6px, transparent 6px, transparent 12px);
+  align-self: center;
+}
+.pos-connector.dim {
+  background: repeating-linear-gradient(to right, #d9d4c6 0, #d9d4c6 4px, transparent 4px, transparent 10px);
+}
+.pos-connector.pending {
+  background: repeating-linear-gradient(to right, #e5e2d8 0, #e5e2d8 3px, transparent 3px, transparent 8px);
+}
+.pos-marker {
+  padding: 0.45rem 0.7rem;
+  border: 1.5px solid var(--gold-border);
+  border-radius: 5px;
+  background: #fffaeb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82rem;
+  color: #4a4436;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+  text-align: left;
+}
+.pos-marker.dim {
+  border-color: #e5e2d8;
+  background: #f6f3ea;
+  color: #8a8577;
+}
+.pos-marker.pending {
+  border-color: #e5e2d8;
+  border-style: dashed;
+  background: #fcfaf3;
+  color: #a19a85;
+}
+.pos-sigs {
+  font-size: 0.7rem;
+  color: #8a8577;
+  margin-top: 0.15rem;
+}
+@media (max-width: 640px) {
+  .chain-row { grid-template-columns: minmax(200px, 1fr) 32px minmax(100px, 130px); }
+  .pos-marker { padding: 0.35rem 0.5rem; font-size: 0.75rem; }
+}

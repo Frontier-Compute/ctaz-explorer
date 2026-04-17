@@ -442,6 +442,7 @@ async def home(request: Request, order: str = 'desc'):
         'event_count': len(events),
         'auto_refresh_s': 30,
         'bft': bft,
+        'pow_pos_map': get_tracker().get_pow_to_pos_map([b['height'] for b in recent]),
     })
 
 

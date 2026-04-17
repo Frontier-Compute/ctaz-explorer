@@ -49,6 +49,7 @@ class ParticipationTracker:
     def __init__(self) -> None:
         self.certs_seen: dict[str, dict[str, Any]] = {}
         self.finalizer_hits: dict[str, int] = {}
+        self.pos_finalization_events: list[dict[str, Any]] = []
         self.started_at: float = time.time()
         self.last_poll_at: float | None = None
         self.last_poll_ok: bool | None = None
@@ -66,6 +67,7 @@ class ParticipationTracker:
             raw = json.loads(STATE_PATH.read_text())
             self.certs_seen = raw.get('certs_seen', {})
             self.finalizer_hits = raw.get('finalizer_hits', {})
+            self.pos_finalization_events = raw.get('pos_finalization_events', [])
             self.started_at = raw.get('started_at', time.time())
         except Exception:
             pass
@@ -77,6 +79,7 @@ class ParticipationTracker:
             tmp.write_text(json.dumps({
                 'certs_seen': self.certs_seen,
                 'finalizer_hits': self.finalizer_hits,
+                'pos_finalization_events': self.pos_finalization_events,
                 'started_at': self.started_at,
             }))
             tmp.replace(STATE_PATH)
@@ -121,11 +124,40 @@ class ParticipationTracker:
                 pk = s.get('pub_key')
                 if pk:
                     signers.append(bytes(pk)[::-1].hex())
+            import struct
+            try:
+                pos_height = struct.unpack('<Q', bytes(vote_bytes[32:40]))[0]
+            except Exception:
+                pos_height = None
+            finalized_pow_height = None
+            try:
+                r = await self._client.post(RPC_URL, json={
+                    'jsonrpc': '2.0', 'method': 'get_tfl_final_block_height_and_hash',
+                    'params': [], 'id': 1,
+                })
+                r.raise_for_status()
+                data = r.json()
+                res = data.get('result')
+                if isinstance(res, dict):
+                    finalized_pow_height = res.get('height')
+            except Exception:
+                pass
             self.certs_seen[cid] = {
                 'first_seen_at': self.last_poll_at,
                 'signer_count': len(signers),
                 'signers': signers,
+                'pos_height': pos_height,
+                'finalized_pow_height': finalized_pow_height,
             }
+            if pos_height is not None:
+                self.pos_finalization_events.append({
+                    'pos_height': pos_height,
+                    'finalized_pow_height': finalized_pow_height,
+                    'signer_count': len(signers),
+                    'observed_at': self.last_poll_at,
+                })
+                if len(self.pos_finalization_events) > 500:
+                    self.pos_finalization_events = self.pos_finalization_events[-500:]
             for pk in signers:
                 self.finalizer_hits[pk] = self.finalizer_hits.get(pk, 0) + 1
             self._save_state()
@@ -142,6 +174,25 @@ class ParticipationTracker:
     async def start(self) -> None:
         if self._task is None or self._task.done():
             self._task = asyncio.create_task(self._loop())
+
+    def get_pow_to_pos_map(self, pow_heights: list[int]) -> dict[int, dict[str, Any]]:
+        """For each requested PoW height, find the smallest PoS cert that had
+        finalized_pow_height >= that PoW height at observation time.
+        Returns dict mapping pow_height -> {pos_height, signer_count, observed_at}."""
+        events = sorted(
+            [e for e in self.pos_finalization_events if e.get('pos_height') is not None and e.get('finalized_pow_height') is not None],
+            key=lambda e: e['pos_height'],
+        )
+        out = {}
+        for h in pow_heights:
+            match = next((e for e in events if e['finalized_pow_height'] >= h), None)
+            if match is not None:
+                out[h] = {
+                    'pos_height': match['pos_height'],
+                    'signer_count': match['signer_count'],
+                    'observed_at': match['observed_at'],
+                }
+        return out
 
     def get_stats(self) -> dict[str, Any]:
         total_certs = len(self.certs_seen)

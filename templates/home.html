@@ -27,10 +27,23 @@
   {% if not loop.first %}<div class='chain-link' aria-hidden='true'></div>{% endif %}
   {% set is_finalized = finalized_height is not none and b.height <= finalized_height %}
   {% set is_tip = b.height == tip %}
-  <a href='/block/{{ b.height }}' class='chain-block{% if is_finalized %} finalized{% endif %}{% if is_tip %} tip{% endif %}'>
-    <span class='chain-height'>#{{ b.height }}</span>
-    <span class='chain-meta'>{{ b.tx_count }} tx · {{ b.time | ago }}{% if is_finalized %} · finalized{% elif is_tip %} · tip{% endif %}</span>
-  </a>
+  {% set pos_info = pow_pos_map.get(b.height) %}
+  <div class='chain-row'>
+    <a href='/block/{{ b.height }}' class='chain-block{% if is_finalized %} finalized{% endif %}{% if is_tip %} tip{% endif %}'>
+      <span class='chain-height'>#{{ b.height }}</span>
+      <span class='chain-meta'>{{ b.tx_count }} tx · {{ b.time | ago }}{% if is_tip %} · tip{% endif %}</span>
+    </a>
+    {% if pos_info %}
+      <div class='pos-connector' aria-hidden='true'></div>
+      <div class='pos-marker'>pos #{{ pos_info.pos_height }}<span class='pos-sigs'>{{ pos_info.signer_count }} sig{% if pos_info.signer_count != 1 %}s{% endif %}</span></div>
+    {% elif is_finalized %}
+      <div class='pos-connector dim' aria-hidden='true'></div>
+      <div class='pos-marker dim'>finalized<span class='pos-sigs'>(pre-crawl)</span></div>
+    {% else %}
+      <div class='pos-connector pending' aria-hidden='true'></div>
+      <div class='pos-marker pending'>pending<span class='pos-sigs'>awaiting cert</span></div>
+    {% endif %}
+  </div>
 {% endfor %}
 </div>
 </div>
