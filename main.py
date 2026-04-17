@@ -686,6 +686,7 @@ async def finalizers_view(request: Request):
         'roster': roster_sorted,
         'total_vp': total_vp,
         'finalized': finalized,
+        'labels': load_finalizer_labels(),
     })
 
 
