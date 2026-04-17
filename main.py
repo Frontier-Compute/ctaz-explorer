@@ -2241,3 +2241,7 @@ async def metrics_guide_view(request: Request):
     return templates.TemplateResponse(request, 'metrics-guide.html', {
         'request': request,
     })
+
+@app.get('/devs')
+async def devs_view(request: Request):
+    return templates.TemplateResponse(request, 'devs.html', {'request': request})
