@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}snapshots{% endblock %}
+{% block content %}
+
+<h2>snapshot aggregator</h2>
+<p class="muted">Cipherscan hosts the primary community Crosslink bootstrap. This page does not mirror the archive. It verifies the live snapshot surface, shows how far our node is from the announced tip, and keeps the seed-preservation restore flow inline.</p>
+
+<section class="staking-window" style="margin-top: 1rem; border-left-color: {% if grade.tone == 'good' %}#4a9e93{% elif grade.tone == 'warn' %}#c9a84c{% else %}#8a8577{% endif %}">
+  <div class="sw-label">{{ grade.grade or 'unknown' }}</div>
+  <div class="sw-caption">
+    primary source:
+    <a href="{{ snapshot.page_url }}" rel="noopener">cipherscan /bootstrap</a>
+    {% if snapshot.download_url %}| <a href="{{ snapshot.download_url }}" rel="noopener">direct download</a>{% endif %}
+    {% if snapshot.sha256_url %}| <a href="{{ snapshot.sha256_url }}" rel="noopener">sha256</a>{% endif %}
+  </div>
+  <p class="muted" style="font-size: 0.82rem; margin-top: 0.65rem">{{ grade.note }}</p>
+  <p class="muted" style="font-size: 0.78rem; margin-top: 0.35rem">
+    freshness computed here from <code>{{ snapshot.freshness_basis or 'unknown' }}</code>:
+    <strong>{{ snapshot.freshness_label }}</strong>
+    {% if snapshot.generated_at_display %}(generated {{ snapshot.generated_at_display }}){% elif snapshot.sha256_last_modified_display %}(sha256 last-modified {{ snapshot.sha256_last_modified_display }}){% endif %}.
+    server cache: {{ snapshot.cache_ttl_seconds }}s.
+  </p>
+</section>
+
+<h3>community sources</h3>
+<table class="blocks">
+  <thead>
+    <tr>
+      <th>source</th>
+      <th>announced tip</th>
+      <th>our tip</th>
+      <th>delta</th>
+      <th>freshness</th>
+      <th>sha256</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><a href="{{ snapshot.page_url }}" rel="noopener">cipherscan</a></td>
+      <td>{{ snapshot.current_cipherscan_tip or '?' }}</td>
+      <td>{{ snapshot.our_canonical_tip or '?' }}</td>
+      <td>{{ snapshot.delta if snapshot.delta is not none else '?' }}</td>
+      <td>{{ snapshot.freshness_label }}</td>
+      <td>{% if snapshot.sha256_if_fetchable %}<code>{{ snapshot.sha256_if_fetchable[:16] }}...</code>{% else %}<span class="muted">unavailable</span>{% endif %}</td>
+    </tr>
+  </tbody>
+</table>
+<p class="muted">Delta is <code>cipherscan_tip - our_tip</code>. Positive means london is behind and cannot honestly verify canonicality from its own tip yet.</p>
+
+<section class="card" style="padding: 1rem; margin-top: 1rem">
+  <div class="card-title" style="margin-bottom: 0.6rem">snapshot metadata</div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.9rem">
+    <div>
+      <div class="muted-mono">generated</div>
+      <div>{% if snapshot.generated_at_display %}<code>{{ snapshot.generated_at_display }}</code>{% else %}<span class="muted">unknown</span>{% endif %}</div>
+    </div>
+    <div>
+      <div class="muted-mono">finalized height</div>
+      <div>{% if snapshot.finalized_height %}<code>{{ snapshot.finalized_height }}</code>{% else %}<span class="muted">unknown</span>{% endif %}</div>
+    </div>
+    <div>
+      <div class="muted-mono">finalized hash</div>
+      <div>{% if snapshot.finalized_hash %}<code>{{ snapshot.finalized_hash }}</code>{% else %}<span class="muted">unknown</span>{% endif %}</div>
+    </div>
+    <div>
+      <div class="muted-mono">archive size</div>
+      <div>{{ snapshot.size_display }}</div>
+    </div>
+    <div>
+      <div class="muted-mono">cache dir</div>
+      <div><code>{{ snapshot.cache_dir_name }}</code></div>
+    </div>
+    <div>
+      <div class="muted-mono">published data</div>
+      <div>
+        {% if snapshot.contents %}
+          {% for item in snapshot.contents %}<code>{{ item }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+        {% else %}
+          <span class="muted">unknown</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% if snapshot.excludes %}
+  <p class="muted" style="margin-top: 0.9rem">never included: {% for item in snapshot.excludes %}<code>{{ item }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+  {% endif %}
+  {% if snapshot.errors %}
+  <p class="muted" style="margin-top: 0.9rem">fetch notes: {{ snapshot.errors | join(' | ') }}</p>
+  {% endif %}
+</section>
+
+<h3>restore walkthrough</h3>
+<p class="muted">Phillip’s seed-preservation flow, rendered server-side and kept copy-friendly without client JavaScript. Download stays on Cipherscan; verification stays here.</p>
+
+{% for step in walkthrough %}
+<section class="card" style="padding: 1rem; margin: 0 0 1rem 0">
+  <div class="card-title" style="margin-bottom: 0.45rem">{{ loop.index }}. {{ step.title }}</div>
+  <p class="muted" style="margin-top: 0">{{ step.body }}</p>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem">
+    <div>
+      <div class="muted-mono" style="margin-bottom: 0.35rem">linux</div>
+      <textarea readonly rows="5" spellcheck="false" style="width: 100%; min-height: 7rem; border: 1px solid var(--line); background: var(--card); color: var(--fg); padding: 0.85rem; font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, Consolas, monospace; font-size: 0.8rem; line-height: 1.45; resize: vertical">{{ step.linux }}</textarea>
+    </div>
+    <div>
+      <div class="muted-mono" style="margin-bottom: 0.35rem">macos</div>
+      <textarea readonly rows="5" spellcheck="false" style="width: 100%; min-height: 7rem; border: 1px solid var(--line); background: var(--card); color: var(--fg); padding: 0.85rem; font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, Consolas, monospace; font-size: 0.8rem; line-height: 1.45; resize: vertical">{{ step.macos }}</textarea>
+    </div>
+  </div>
+</section>
+{% endfor %}
+
+<h3>verify after restore</h3>
+<p class="muted">After restart, paste the snapshot height and hash into <a href="{{ sync_check_prefill_url }}">/sync-check</a> to confirm your node landed on the same chain we saw when this page rendered.</p>
+{% if sync_check_api_url %}
+<textarea readonly rows="2" spellcheck="false" style="width: 100%; min-height: 3.2rem; border: 1px solid var(--line); background: var(--card); color: var(--fg); padding: 0.85rem; font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, Consolas, monospace; font-size: 0.8rem; line-height: 1.45; resize: vertical">{% if snapshot.sync_check_api_curl %}{{ snapshot.sync_check_api_curl }}{% else %}{{ sync_check_api_url }}{% endif %}</textarea>
+{% endif %}
+
+{% endblock %}
