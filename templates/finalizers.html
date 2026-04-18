@@ -2,6 +2,10 @@
 {% block title %}finalizers{% endblock %}
 {% block content %}
 <h2>active finalizer roster</h2>
+<div class="banner" style="background:#2a1a0a;border:1px solid #663300;padding:10px;border-radius:4px;margin:8px 0;font-size:13px">
+<strong>view frozen at bft-finalized 1116 (pre-wall-of-death)</strong><br>
+per <a href="https://twitter.com/samsmiffy" rel="noopener">sam smith</a> 12:07 AM UTC 2026-04-18: network-wide wall of death at ~4386 pow / 1797 pos. shielded labs backed up four server nodes. chain recovery planned via v3 release in the coming week. recent stakes (including operator Pub{93bb}) are in sl backups and will reappear in the roster after chain-resume. this view reflects our local state at bft-finalized 1116 until v3 ships.
+</div>
 <p class='muted'><a href='/finalizers/participation'>participation view (v1)</a></p>
 <p class="muted">finalized at block {% if finalized and finalized.height is defined %}{{ finalized.height }}{% else %}—{% endif %}, total stake {{ total_vp | ctaz }} ctaz across {{ roster | length }} finalizers</p>
 
