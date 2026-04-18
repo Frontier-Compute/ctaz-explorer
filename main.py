@@ -9,6 +9,18 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from rpc import ZebradRPC
+from snapshots import (
+    compute_canonical_grade,
+    fetch_cipherscan_snapshot_meta,
+    render_snapshots_page,
+)
+from zap1_live import (
+    close as close_zap1_live,
+    fetch_anchor_registry as fetch_zap1_live_anchors,
+    fetch_leaf_by_hash as fetch_zap1_live_leaf_by_hash,
+    fetch_leaf_registry as fetch_zap1_live_leaves,
+    fetch_status as fetch_zap1_live_status,
+)
 
 app = FastAPI(title='ctaz-explorer', docs_url=None, redoc_url=None)
 templates = Jinja2Templates(directory='templates')
@@ -34,7 +46,7 @@ NO_STORE_PREFIXES = (
     '/api/', '/block/', '/tx/', '/verify', '/finalizers',
     '/anchors', '/vaults', '/events', '/params', '/tfl',
     '/tip', '/finalized', '/gap', '/feed.xml',
-    '/.well-known/explorer', '/z/', '/tip.z',
+    '/.well-known/explorer', '/z/', '/tip.z', '/snapshots',
 )
 
 
@@ -194,6 +206,12 @@ ZAP1_EVENT_LABELS = {
     '0a': 'staking deposit',
     '0b': 'staking withdraw',
     '0c': 'staking reward',
+    '0d': 'governance proposal',
+    '0e': 'governance vote',
+    '0f': 'governance result',
+    '40': 'agent register',
+    '41': 'agent policy',
+    '42': 'agent action',
 }
 
 
@@ -621,6 +639,8 @@ async def lookup_live_zap1_attestation(txid: str) -> dict | None:
 
 
 def route_chain_key(path: str):
+    if path in {'/snapshots', '/api/snapshots'}:
+        return None
     if path == '/z' or path == '/tip.z' or path.startswith('/z/') or path.startswith('/api/z/'):
         return 'zcash'
     if path in {
@@ -719,6 +739,16 @@ async def refresh_chain_route_status():
 @app.on_event('startup')
 async def verify_chain_backends():
     await refresh_chain_route_status()
+
+
+@app.on_event('shutdown')
+async def shutdown_clients():
+    await asyncio.gather(
+        rpc.close(),
+        rpc_zcash.close(),
+        close_zap1_live(),
+        return_exceptions=True,
+    )
 
 
 @app.exception_handler(Exception)
@@ -1032,7 +1062,7 @@ async def pool_view(request: Request, pool_id: str):
     if not info:
         raise HTTPException(status_code=503, detail='node not ready')
     tip = info.get('blocks', 0)
-    series = await cached_pool_history(pool_id, tip, 'ctaz')
+    series = await fetch_pool_history(pool_id, tip)
     values_zat = [s['value_zat'] for s in series]
     sparkline_svg = build_sparkline(values_zat)
     chain_pool = {}
@@ -1066,7 +1096,7 @@ async def api_pool(pool_id: str):
     if not info:
         return JSONResponse(status_code=503, content={'error': 'node not ready'})
     tip = info.get('blocks', 0)
-    series = await cached_pool_history(pool_id, tip, 'ctaz')
+    series = await fetch_pool_history(pool_id, tip)
     return {
         'pool': pool_id,
         'kind': POOL_META[pool_id]['kind'],
@@ -1255,9 +1285,11 @@ async def search(request: Request, q: str = ''):
 
 @app.get('/z')
 async def zcash_home(request: Request):
-    info, chaininfo = await asyncio.gather(
+    info, chaininfo, anchors, leaf_count = await asyncio.gather(
         safe_call_on('zcash', 'getinfo'),
         safe_call_on('zcash', 'getblockchaininfo'),
+        load_zcash_zap1_anchors(),
+        load_zcash_zap1_leaf_count(),
     )
     if not info or not chaininfo:
         raise HTTPException(status_code=503, detail='zcash mainnet node not ready')
@@ -1283,7 +1315,12 @@ async def zcash_home(request: Request):
     transparent = pools.get('transparent', {}).get('chainValue', 0)
     sapling = pools.get('sapling', {}).get('chainValue', 0)
     lockbox = pools.get('lockbox', {}).get('chainValue', 0)
-    anchors = [e for e in load_chain_registry('zap1-anchors.json', 'zcash') if e.get('network') == 'zcash-mainnet']
+    anchors = [e for e in anchors if e.get('network') == 'zcash-mainnet']
+    anchors_preview = sorted(
+        anchors,
+        key=lambda e: int(e.get('block_height') or 0),
+        reverse=True,
+    )[:5]
     return templates.TemplateResponse(request, 'zcash_home.html', {
         'request': request,
         'chain': CHAINS['zcash'],
@@ -1296,8 +1333,9 @@ async def zcash_home(request: Request):
         'sapling': sapling,
         'lockbox': lockbox,
         'recent': list(reversed(recent)),
+        'leaf_count': leaf_count,
         'anchor_count': len(anchors),
-        'anchors_preview': anchors[:5],
+        'anchors_preview': anchors_preview,
     })
 
 
@@ -1344,7 +1382,7 @@ async def zcash_tx(request: Request, txid: str):
     if not tx:
         raise HTTPException(status_code=404, detail='transaction not found on zcash mainnet')
     flow = tx_value_flow(tx)
-    anchors = load_chain_registry('zap1-anchors.json', 'zcash')
+    anchors = await load_zcash_zap1_anchors()
     zap1_anchor = None
     for entry in anchors:
         if entry.get('txid', '').lower() == txid.lower() and entry.get('network') == 'zcash-mainnet':
@@ -1363,7 +1401,7 @@ async def zcash_tx(request: Request, txid: str):
 
 @app.get('/z/anchors')
 async def zcash_anchors(request: Request):
-    registry = [e for e in load_chain_registry('zap1-anchors.json', 'zcash') if e.get('network') == 'zcash-mainnet']
+    registry = [e for e in await load_zcash_zap1_anchors() if e.get('network') == 'zcash-mainnet']
     for e in registry:
         e['event_label'] = ZAP1_EVENT_LABELS.get(e.get('event_type', '').lower(), 'unknown event')
     registry.sort(key=lambda e: int(e.get('block_height') or 0), reverse=True)
@@ -1390,7 +1428,7 @@ async def api_zcash_tip():
 
 @app.get('/api/z/anchors')
 async def api_zcash_anchors():
-    registry = [e for e in load_chain_registry('zap1-anchors.json', 'zcash') if e.get('network') == 'zcash-mainnet']
+    registry = [e for e in await load_zcash_zap1_anchors() if e.get('network') == 'zcash-mainnet']
     registry.sort(key=lambda e: int(e.get('block_height') or 0), reverse=True)
     return {
         'protocol': 'ZAP1',
@@ -1762,7 +1800,10 @@ async def rss_feed():
 
 @app.get("/z/leaves")
 async def zcash_leaves(request: Request):
-    leaves = load_chain_registry("zap1-leaves.json", "zcash")
+    leaves, leaf_count = await asyncio.gather(
+        load_zcash_zap1_leaves(),
+        load_zcash_zap1_leaf_count(),
+    )
     by_type = {}
     for lf in leaves:
         t = lf.get("event_type", "??")
@@ -1771,6 +1812,7 @@ async def zcash_leaves(request: Request):
         "request": request,
         "chain": CHAINS["zcash"],
         "leaves": leaves,
+        "leaf_count": leaf_count,
         "by_type": sorted(by_type.items()),
         "event_labels": ZAP1_EVENT_LABELS,
     })
@@ -1778,21 +1820,23 @@ async def zcash_leaves(request: Request):
 
 @app.get("/api/z/leaves")
 async def api_zcash_leaves():
-    leaves = load_chain_registry("zap1-leaves.json", "zcash")
+    leaves, leaf_count = await asyncio.gather(
+        load_zcash_zap1_leaves(),
+        load_zcash_zap1_leaf_count(),
+    )
     return {
         "protocol": "ZAP1",
         "network": "zcash-mainnet",
-        "count": len(leaves),
+        "count": leaf_count,
         "leaves": leaves,
     }
 
 
 @app.get("/api/z/leaf/{leaf_hash}")
 async def api_zcash_leaf(leaf_hash: str):
-    leaves = load_chain_registry("zap1-leaves.json", "zcash")
-    for lf in leaves:
-        if lf.get("leaf_hash", "").lower() == leaf_hash.lower():
-            return lf
+    leaf = await load_zcash_zap1_leaf(leaf_hash)
+    if leaf:
+        return leaf
     return JSONResponse(status_code=404, content={"error": "leaf not found", "leaf_hash": leaf_hash})
 
 import hashlib as _hashlib_merkle
@@ -2023,6 +2067,83 @@ async def api_sync_check(height: int, your_hash: str):
         'our_peers': info.get('connections'),
     }
 
+
+async def load_snapshot_view_model(base_url: str | None = None):
+    our_tip, info, snapshot = await asyncio.gather(
+        safe_call('getblockcount'),
+        safe_call('getinfo'),
+        fetch_cipherscan_snapshot_meta(),
+    )
+    our_peers = (info or {}).get('connections')
+    verification_height = snapshot.get('finalized_height') or snapshot.get('current_cipherscan_tip')
+    our_hash_at_snapshot_height = None
+    if verification_height is not None and our_tip is not None and our_tip >= verification_height:
+        our_hash_at_snapshot_height = await safe_call('getblockhash', [verification_height])
+
+    grade = compute_canonical_grade(
+        snapshot.get('current_cipherscan_tip'),
+        our_tip,
+        cipherscan_hash=snapshot.get('finalized_hash'),
+        our_hash=our_hash_at_snapshot_height,
+    )
+
+    sync_check_prefill_url = '/sync-check'
+    sync_check_api_url = None
+    sync_check_api_curl = None
+    if verification_height is not None and snapshot.get('finalized_hash'):
+        sync_check_prefill_url = f"/sync-check?height={verification_height}&hash={snapshot['finalized_hash']}"
+        sync_check_api_url = f"/api/sync-check/{verification_height}/{snapshot['finalized_hash']}"
+        if base_url:
+            sync_check_api_curl = f"curl -fsSL {base_url.rstrip('/')}{sync_check_api_url}"
+
+    snapshot.update({
+        'our_canonical_tip': our_tip,
+        'our_peers': our_peers,
+        'verification_height': verification_height,
+        'our_hash_at_snapshot_height': our_hash_at_snapshot_height,
+        'delta': grade.get('delta'),
+        'grade': grade,
+        'sync_check_prefill_url': sync_check_prefill_url,
+        'sync_check_api_url': sync_check_api_url,
+        'sync_check_api_curl': sync_check_api_curl,
+    })
+    return snapshot
+
+
+@app.get('/snapshots')
+async def snapshots_view(request: Request):
+    snapshot = await load_snapshot_view_model(str(request.base_url))
+    return render_snapshots_page(request, templates, snapshot)
+
+
+@app.get('/api/snapshots')
+async def api_snapshots():
+    snapshot = await load_snapshot_view_model()
+    return {
+        'source': snapshot.get('source_slug'),
+        'current_cipherscan_tip': snapshot.get('current_cipherscan_tip'),
+        'our_canonical_tip': snapshot.get('our_canonical_tip'),
+        'delta': snapshot.get('delta'),
+        'grade': snapshot.get('grade', {}).get('grade'),
+        'grade_note': snapshot.get('grade', {}).get('note'),
+        'hash_match': snapshot.get('grade', {}).get('hash_match'),
+        'freshness_age_seconds': snapshot.get('freshness_age_seconds'),
+        'freshness_basis': snapshot.get('freshness_basis'),
+        'generated_at': snapshot.get('generated_at'),
+        'generated_at_display': snapshot.get('generated_at_display'),
+        'cipherscan_url': snapshot.get('cipherscan_url'),
+        'download_url': snapshot.get('download_url'),
+        'sha256_url': snapshot.get('sha256_url'),
+        'sha256_if_fetchable': snapshot.get('sha256_if_fetchable'),
+        'finalized_height': snapshot.get('finalized_height'),
+        'finalized_hash': snapshot.get('finalized_hash'),
+        'our_hash_at_snapshot_height': snapshot.get('our_hash_at_snapshot_height'),
+        'available': snapshot.get('available'),
+        'errors': snapshot.get('errors'),
+        'cache_ttl_seconds': snapshot.get('cache_ttl_seconds'),
+        'last_checked_at': snapshot.get('last_checked_at'),
+    }
+
 @app.get('/chain-health')
 async def chain_health_view(request: Request):
     info, final_hh = await asyncio.gather(
@@ -2245,3 +2366,23 @@ async def metrics_guide_view(request: Request):
 @app.get('/devs')
 async def devs_view(request: Request):
     return templates.TemplateResponse(request, 'devs.html', {'request': request})
+
+@app.get('/super')
+async def super_view(request: Request):
+    supernode = __import__('super')
+    payload = await asyncio.to_thread(supernode.build_super_payload)
+    response = templates.TemplateResponse(request, 'super.html', {
+        'request': request,
+        **payload,
+        'auto_refresh_s': 30,
+    })
+    response.headers['Cache-Control'] = 'no-store'
+    response.headers['X-Robots-Tag'] = 'noarchive'
+    return response
+
+
+@app.get('/api/super')
+async def api_super():
+    supernode = __import__('super')
+    return await asyncio.to_thread(supernode.build_super_payload)
+
