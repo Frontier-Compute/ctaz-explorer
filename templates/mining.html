@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}ctaz-explorer · mining{% endblock %}
+{% block content %}
+<style>
+.mining-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 18px 0 28px;
+}
+.mining-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 18px 16px;
+}
+.mining-panel-head {
+  margin: 0 0 12px;
+  justify-content: space-between;
+}
+.mining-panel-head h2 {
+  margin: 0;
+}
+.mining-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0 0 16px;
+}
+.mining-stats .stat {
+  min-height: 84px;
+  padding: 18px 18px;
+}
+.mining-detail {
+  margin-bottom: 14px;
+}
+.mining-probes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 12px;
+}
+.mining-probe {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  color: var(--fg-muted);
+  background: #f8f6ef;
+}
+.mining-probe strong {
+  font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, Consolas, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  color: var(--fg);
+}
+.mining-notes {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--fg-muted);
+  font-size: 0.82rem;
+}
+.mining-links {
+  margin: 0 0 18px;
+}
+.mining-links a {
+  margin-right: 14px;
+}
+@media (max-width: 760px) {
+  .mining-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 420px) {
+  .mining-stats {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+<p class="family-eyebrow">mining telemetry for the frontier supernode. json: <a href="/api/mining"><code>/api/mining</code></a>. page refresh: 60s. local s-nomp cache: {{ cache.local_ttl_s }}s. public pool cache: {{ cache.remote_ttl_s }}s.</p>
+
+<div class="banner">
+<strong>Nordic Shield</strong> 6× Z15 Pro antminers shipping from Leedminer late April, racking at Hamushosting Norway, online early May 2026. All rigs will point to <a href="https://pool.zecminingpool.com" rel="noopener">pool.zecminingpool.com</a>. Related frontier links: <a href="https://frontiercompute.cash" rel="noopener">custody</a> and <a href="https://frontiercompute.cash/signup.html#custody" rel="noopener">cohort signup</a>.
+</div>
+
+<div class="page-head">
+<h2>mining route</h2>
+<span class="finality {% if reachability.all %}finalized{% else %}notyet{% endif %}">{% if reachability.all %}both upstreams reachable{% else %}partial reachability{% endif %}</span>
+</div>
+<p class="muted">generated {{ generated_at }}. london reads s-nomp locally and reads the public pool with a 60s cache so the separate VPS is not polled harder than the page cadence.</p>
+
+<div class="mining-links">
+<a href="https://pool.zecminingpool.com" rel="noopener">public pool</a>
+<a href="https://frontiercompute.cash" rel="noopener">shieldedvault custody</a>
+<a href="https://frontiercompute.cash/signup.html#custody" rel="noopener">cohort signup</a>
+</div>
+
+<section class="mining-grid">
+{% for panel in panels %}
+<article class="mining-panel">
+  <div class="page-head mining-panel-head">
+    <h2>{{ panel.label }}</h2>
+    <span class="finality {{ panel.status_class }} small">{{ panel.status_label }}</span>
+  </div>
+
+  {% if panel.error %}
+  <p class="muted">error: {{ panel.error }}</p>
+  {% endif %}
+
+  <section class="stats mining-stats">
+    <div class="stat">
+      <div class="label">hashrate</div>
+      <div class="value">{{ panel.hashrate_mh_display }}<span class="unit">MH/s</span></div>
+    </div>
+    <div class="stat">
+      <div class="label">active workers</div>
+      <div class="value">{{ panel.workers_display }}</div>
+    </div>
+    <div class="stat">
+      <div class="label">blocks found 24h</div>
+      <div class="value">{{ panel.blocks_24h_display }}</div>
+    </div>
+    <div class="stat">
+      <div class="label">blocks found total</div>
+      <div class="value">{{ panel.blocks_total_display }}</div>
+    </div>
+  </section>
+
+  <dl class="detail mining-detail">
+    <dt>last block height</dt>
+    <dd>{{ panel.last_block_height_display }}</dd>
+    <dt>last block seen</dt>
+    <dd>{% if panel.last_block_found_at %}{{ panel.last_block_found_at | ago }}{% else %}unknown{% endif %}</dd>
+    <dt>last payout</dt>
+    <dd>{% if panel.last_payout and panel.last_payout.at %}{{ panel.last_payout.amount_display }} ZEC · {{ panel.last_payout.at | ago }}{% else %}{{ panel.last_payout_display }}{% endif %}</dd>
+    <dt>last paid block height</dt>
+    <dd>{{ panel.last_paid_block_height_display }}</dd>
+    <dt>total paid</dt>
+    <dd>{% if panel.total_paid_zec is not none %}{{ panel.total_paid_display }} ZEC{% else %}unknown{% endif %}</dd>
+    <dt>cache state</dt>
+    <dd>{{ panel.cache_ttl_s }}s ttl · {{ panel.cache_age_s }}s age</dd>
+  </dl>
+
+  <div class="mining-probes">
+    {% for name, probe in panel.probes.items() %}
+    <span class="mining-probe"><strong>{{ name }}</strong>{% if probe.ok %}ok{% else %}fail{% endif %}</span>
+    {% endfor %}
+  </div>
+
+  {% if panel.notes %}
+  <ul class="mining-notes">
+    {% for note in panel.notes %}
+    <li>{{ note }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</article>
+{% endfor %}
+</section>
+
+<h3>json</h3>
+<p class="muted">programmatic view: <a href="/api/mining"><code>/api/mining</code></a></p>
+{% endblock %}

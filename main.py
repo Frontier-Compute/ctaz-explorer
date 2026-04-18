@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from mining import build_mining_payload
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from rpc import ZebradRPC
 from snapshots import (
@@ -2366,6 +2367,24 @@ async def metrics_guide_view(request: Request):
 @app.get('/devs')
 async def devs_view(request: Request):
     return templates.TemplateResponse(request, 'devs.html', {'request': request})
+
+@app.get('/mining')
+async def mining_view(request: Request):
+    payload = await asyncio.to_thread(build_mining_payload)
+    response = templates.TemplateResponse(request, 'mining.html', {
+        'request': request,
+        **payload,
+        'auto_refresh_s': 60,
+    })
+    response.headers['Cache-Control'] = 'no-store'
+    response.headers['X-Robots-Tag'] = 'noarchive'
+    return response
+
+
+@app.get('/api/mining')
+async def api_mining():
+    return await asyncio.to_thread(build_mining_payload)
+
 
 @app.get('/super')
 async def super_view(request: Request):
