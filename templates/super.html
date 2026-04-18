@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}supernode · ctaz-explorer{% endblock %}
+{% block content %}
+
+<section class="super-hero">
+  <div class="super-kicker">meta cognition layer</div>
+  <div class="super-hero-row">
+    <div>
+      <h1 class="super-title">/super</h1>
+      <p class="super-subtitle">two-vps operational board for london and frankfurt. peer state is cached server-side for {{ peer_cache_ttl_s }}s and the page refreshes every 30s.</p>
+    </div>
+    <div class="super-delta {% if alignment.peer_unreachable %}is-stale{% elif alignment.zebrad_height_delta == 0 and not alignment.besthash_mismatch %}is-good{% else %}is-warn{% endif %}">
+      <div class="super-delta-label">zebrad height delta</div>
+      <div class="super-delta-value">{% if alignment.zebrad_height_delta is not none %}{{ alignment.zebrad_height_delta }}{% else %}—{% endif %}</div>
+      <div class="super-delta-sub">
+        {% if alignment.peer_unreachable %}
+          peer unavailable
+        {% elif alignment.besthash_mismatch %}
+          same height, different besthash
+        {% else %}
+          blocks
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="super-alignment {% if alignment.in_tune %}is-good{% else %}is-drift{% endif %}">
+  <div class="super-alignment-head">
+    <div class="super-alignment-label">alignment flags</div>
+    <div class="super-alignment-title">{% if alignment.in_tune %}IN TUNE{% else %}DRIFT DETECTED{% endif %}</div>
+  </div>
+  {% if alignment.in_tune %}
+    <p class="super-alignment-copy">zebrad, services, and resource posture are aligned across both VPSs at the latest sample.</p>
+  {% else %}
+    <ul class="super-drift-list">
+      {% for drift in alignment.drifts %}
+      <li>{{ drift }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</section>
+
+{% if not peer.reachable %}
+<section class="banner">
+  peer fetch failed{% if peer_host %} for <code>{{ peer_host }}</code>{% endif %}: {{ peer.error or "unreachable" }}. the board is showing frankfurt local state only until the next cache refresh.
+</section>
+{% endif %}
+
+<section class="super-grid">
+  {% for vps in panels %}
+  <article class="super-panel {% if not vps.reachable %}is-unreachable{% endif %}">
+    <div class="super-panel-head">
+      <div>
+        <div class="super-panel-label">{{ vps.display_host or vps.host }}</div>
+        <div class="muted">sampled {{ vps.ts or "—" }}</div>
+      </div>
+      <span class="super-pill {% if vps.reachable %}is-live{% else %}is-down{% endif %}">
+        {% if vps.reachable %}live{% else %}unreachable{% endif %}
+      </span>
+    </div>
+
+    <div class="super-metric-grid">
+      <div class="super-metric-card">
+        <div class="super-metric-label">zebrad tip</div>
+        <div class="super-metric-value">{% if vps.zebrad and vps.zebrad.h is not none %}{{ vps.zebrad.h }}{% else %}—{% endif %}</div>
+      </div>
+      <div class="super-metric-card">
+        <div class="super-metric-label">peers</div>
+        <div class="super-metric-value">{% if vps.zebrad and vps.zebrad.peers is not none %}{{ vps.zebrad.peers }}{% else %}—{% endif %}</div>
+      </div>
+      <div class="super-metric-card">
+        <div class="super-metric-label">besthash</div>
+        <div class="super-metric-value super-metric-hash">{% if vps.zebrad and vps.zebrad.besthash %}{{ vps.zebrad.besthash|short(18) }}{% else %}—{% endif %}</div>
+      </div>
+      <div class="super-metric-card">
+        <div class="super-metric-label">cache age</div>
+        <div class="super-metric-value">{% if vps.cache_age_s is defined %}{{ "%.1f"|format(vps.cache_age_s) }}s{% else %}live{% endif %}</div>
+      </div>
+    </div>
+
+    <div class="super-bar-block">
+      <div class="super-bar-row">
+        <div class="super-bar-meta">
+          <span>disk</span>
+          <strong>{% if vps.disk_pct is not none %}{{ vps.disk_pct }}%{% else %}—{% endif %}</strong>
+        </div>
+        <div class="super-meter">
+          <div class="super-meter-fill is-disk" style="width: {{ vps.disk_pct or 0 }}%"></div>
+        </div>
+      </div>
+      <div class="super-bar-row">
+        <div class="super-bar-meta">
+          <span>memory</span>
+          <strong>
+            {% if vps.mem_pct is not none %}
+              {{ vps.mem_used_mb or "—" }} / {{ vps.mem_total_mb or "—" }} MB
+            {% else %}
+              —
+            {% endif %}
+          </strong>
+        </div>
+        <div class="super-meter">
+          <div class="super-meter-fill is-memory" style="width: {{ vps.mem_pct or 0 }}%"></div>
+        </div>
+      </div>
+    </div>
+
+    {% if vps.zebrad and vps.zebrad.errors %}
+    <p class="super-error">{{ vps.zebrad.errors }}</p>
+    {% endif %}
+
+    <h3>services</h3>
+    <div class="super-service-grid">
+      {% for name, status in (vps.services or {}).items() %}
+      <div class="super-service-card">
+        <div class="super-service-name">{{ name }}</div>
+        <div class="super-service-state is-{{ status|replace('_', '-')|replace('.', '-') }}">{{ status }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <h3>tmux</h3>
+    <div class="super-chip-row">
+      {% for session in vps.tmux_sessions or [] %}
+      <span class="super-chip">{{ session }}</span>
+      {% else %}
+      <span class="muted">no tmux sessions detected</span>
+      {% endfor %}
+    </div>
+
+    <h3>recent handbacks</h3>
+    <ul class="super-mini-timeline">
+      {% for item in (vps.recent_handbacks or [])[:5] %}
+      <li>
+        <div class="super-mini-title">{{ item.title }}</div>
+        <div class="muted"><code>{{ item.file }}</code> · {{ item.mtime }}</div>
+      </li>
+      {% else %}
+      <li class="muted">no handbacks found</li>
+      {% endfor %}
+    </ul>
+  </article>
+  {% endfor %}
+</section>
+
+<h3>merged handback timeline</h3>
+<ul class="super-timeline">
+  {% for item in merged_handbacks %}
+  <li class="super-timeline-item">
+    <div class="super-timeline-head">
+      <span class="super-chip is-node">{{ item.node }}</span>
+      <span class="muted">{{ item.mtime }}</span>
+    </div>
+    <div class="super-timeline-title">{{ item.title }}</div>
+    <div class="muted"><code>{{ item.file }}</code> · {{ item.bytes|hsize }}</div>
+  </li>
+  {% else %}
+  <li class="muted">no merged handbacks available</li>
+  {% endfor %}
+</ul>
+
+{% endblock %}
